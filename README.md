@@ -12,9 +12,23 @@ Kelas Pentest Indonesia
     allowfullscreen>
 </iframe>
 
+<iframe width="560" height="315"
+  src="https://www.youtube.com/embed/XLvPpirlmEs"
+  title="What Is Ethical Hacking? (Ethical Hacking In 8 Minutes)"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen>
+</iframe>
+
 ## Elements of Information Security
 
-
+<iframe width="560" height="315"
+  src="https://www.youtube.com/embed/6jli-yKbk0A"
+  title="What Are The Elements Of Information Security?"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen>
+</iframe>
 
 ## Cyber Kill Chain Methodology
 
@@ -37,7 +51,25 @@ Kelas Pentest Indonesia
 </iframe>
 
 ## Incident Management
+
+<iframe width="560" height="315"
+  src="https://www.youtube.com/embed/mpsCsmM0vVQ"
+  title="How Incident Response Works in Cybersecurity"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen>
+</iframe>
+
 ## Information Assurance
+
+<iframe width="560" height="315"
+  src="https://www.youtube.com/embed/RtmuuWg_dkQ"
+  title="What is Information Assurance"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen>
+</iframe>
+
 ## MITRE ATT&CK Framework
 
 <iframe width="560" height="315"

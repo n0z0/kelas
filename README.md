@@ -3,9 +3,39 @@ Kelas Pentest Indonesia
 
 # Introduction to Ethical Hacking and Iinformation Security
 ## Ethical Hacking
+
+<iframe width="560" height="315"
+    src="https://www.youtube.com/embed/olqJhwbBZdA"
+    title="Ethical Hacking Explained in 2 Minutes"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowfullscreen>
+</iframe>
+
 ## Elements of Information Security
+
+
+
 ## Cyber Kill Chain Methodology
+
+<iframe width="560" height="315"
+    src="https://www.youtube.com/embed/s6XgCJ141Ww"
+    title="The Cyber Kill Chain Explained: Map & Analyze Cyber Attacks!"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowfullscreen>
+</iframe>
+
 ## Risk Management
+
+<iframe width="560" height="315"
+    src="https://www.youtube.com/embed/mJIhpbzaF-o"
+    title="The Ultimate Guide To Risk Management in Cybersecurity"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowfullscreen>
+</iframe>
+
 ## Incident Management
 ## Information Assurance
 ## MITRE ATT&CK Framework

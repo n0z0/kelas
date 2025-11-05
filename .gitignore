@@ -7,3 +7,32 @@ node_modules
 # Generated files
 .psci
 output
+
+# LaTeX auxiliary files
+*.aux
+*.log
+*.toc
+*.out
+*.nav
+*.snm
+*.vrb
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.end
+*.fdb
+*.fls
+*.lof
+*.lot
+*.fls
+*.glo
+*.gls
+*.glsdefs
+*.idx
+*.ilg
+*.ind
+*.ptc
+*.tex.backup
+*.tex~

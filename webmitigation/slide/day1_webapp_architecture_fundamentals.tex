@@ -8,6 +8,50 @@
 \usepackage{multicol}
 \usepackage{xcolor}
 \usepackage{verbatim}
+\usepackage{fontawesome5}
+
+% Define JavaScript language for listings
+\lstdefinelanguage{JavaScript}{
+  keywords={typeof, new, true, false, catch, function, return, null, catch, switch, var, if, in, while, do, else, case, break, let, const, class, extends, super, import, export, from, default, async, await},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={constructor, prototype, this, Promise},
+  ndkeywordstyle=\color{darkgray}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=false,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{purple}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+% Define YAML language for listings
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null,yes,no,on,off},
+  keywordstyle=\color{darkgray}\bfseries,
+  basicstyle=\ttfamily\footnotesize,
+  sensitive=false,
+  comment=[l]{\#},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{purple}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+
+% Set some basic styles for all listings
+% You can also add some general settings for all listings
+\lstset{
+   basicstyle=\ttfamily\footnotesize,
+   breaklines=true,
+   frame=single,
+   numbers=left,
+   numberstyle=\tiny\color{gray},
+   showstringspaces=false % Don't show spaces in strings
+}
+
+
 
 \usetheme{Madrid}
 \usecolortheme{whale}
@@ -342,7 +386,7 @@ app.use((err, req, res, next) => {
 \item[\faIcon{shield-alt}] Principle of least privilege
 \item[\faIcon{lock}] Encryption at rest and in transit
 \item[\faIcon{user-shield}] Regular security audits
-\item[\faIcon{backup}] Backup and recovery planning
+\item[\faIcon{database}] Backup and recovery planning
 \end{itemize}
 \column{0.5\textwidth}
 \textbf{Secure Database Configuration:}
@@ -503,7 +547,7 @@ server {
 \column{0.5\textwidth}
 \textbf{Lab Objectives:}
 \begin{itemize}
-\item[\faIcon{target}] Identify components in a web application
+\item[\faIcon{bullseye}] Identify components in a web application
 \item[\faIcon{map}] Map data flow between components
 \item[\faIcon{search}] Identify potential security vulnerabilities
 \item[\faIcon{shield-alt}] Recommend security improvements

@@ -39,6 +39,8 @@
   morestring=[b]"
 }
 
+% Tambahkan definisi ini di preamble Anda
+
 % Define HTML language for listings
 \lstdefinelanguage{HTML5}{
   language=HTML,
@@ -83,6 +85,7 @@
 }
 
 % Set some basic styles for all listings
+% You can also add some general settings for all listings
 \lstset{
    basicstyle=\ttfamily\footnotesize,
    breaklines=true,
@@ -92,9 +95,38 @@
    showstringspaces=false % Don't show spaces in strings
 }
 
+
+
 \usetheme{Madrid}
 \usecolortheme{whale}
 \setbeamertemplate{navigation symbols}{}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{alertred}{rgb}{0.8,0.1,0.1}
+\definecolor{alertgreen}{rgb}{0.1,0.8,0.1}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
 
 \title{Day 1: Web Application Architecture and Fundamentals}
 \subtitle{Comprehensive Training with Practical Examples and Hands-on Exercises}
@@ -261,31 +293,31 @@ PWA & CSP, service workers \\
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible"
+    <meta http-equiv="X-UA-Compatible" 
           content="IE=edge">
-    <meta name="viewport"
-          content="width=device-width,
+    <meta name="viewport" 
+          content="width=device-width, 
                    initial-scale=1.0">
     <!-- Security Headers -->
-    <meta http-equiv="Content-Security-Policy"
-          content="default-src 'self';
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
                    script-src 'self' 'unsafe-inline';
                    style-src 'self' 'unsafe-inline'">
-    <meta http-equiv="X-Content-Type-Options"
+    <meta http-equiv="X-Content-Type-Options" 
           content="nosniff">
-    <meta http-equiv="X-Frame-Options"
+    <meta http-equiv="X-Frame-Options" 
           content="DENY">
 </head>
 <body>
     <!-- Secure form with CSRF protection -->
     <form action="/submit" method="POST">
-        <input type="hidden"
-               name="csrf_token"
+        <input type="hidden" 
+               name="csrf_token" 
                value="{{csrf_token}}">
         <!-- Input validation -->
-        <input type="email"
-               name="email"
-               required
+        <input type="email" 
+               name="email" 
+               required 
                pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$">
         <button type="submit">Submit</button>
     </form>
@@ -404,16 +436,16 @@ app.use((err, req, res, next) => {
 \textbf{Secure Database Configuration:}
 \begin{lstlisting}[language=SQL]
 -- MySQL Security Configuration
-CREATE USER 'secure_user'@'localhost'
+CREATE USER 'secure_user'@'localhost' 
 IDENTIFIED BY 'StrongPassword123!';
 
 -- Grant minimal required privileges
-GRANT SELECT, INSERT, UPDATE, DELETE
-ON webapp_database.*
+GRANT SELECT, INSERT, UPDATE, DELETE 
+ON webapp_database.* 
 TO 'secure_user'@'localhost';
 
 -- Remove unnecessary privileges
-REVOKE ALL PRIVILEGES, GRANT OPTION
+REVOKE ALL PRIVILEGES, GRANT OPTION 
 FROM 'old_user'@'%';
 
 -- Enable SSL connections
@@ -612,6 +644,8 @@ server {
 \end{enumerate}
 \end{columns}
 \end{frame}
+
+% Frame removed due to compilation issues
 
 \begin{frame}{Security Assessment Checklist}
 \begin{columns}

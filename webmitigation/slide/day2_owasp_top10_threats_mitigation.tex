@@ -1,7 +1,8 @@
-\documentclass[aspectratio=169,12pt]{beamer}
+﻿\documentclass[aspectratio=169,12pt]{beamer}
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
 \usepackage{tikz}
+\usepackage{pgf-pie}
 \usepackage{listings}
 \usepackage{hyperref}
 \usepackage{booktabs}
@@ -42,6 +43,24 @@
 }
 \lstset{style=mystyle}
 
+% Define languages used in listings (fallback-safe)
+\lstdefinelanguage{Go}{
+  morekeywords={package,import,func,return,if,else,for,range,type,struct,map,var,const,interface,select,case,break,continue,goto,default,defer,go,chan},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]",
+}
+\lstdefinelanguage{JavaScript}{
+  morekeywords={import,export,from,async,await,return,if,else,for,while,const,let,var,function,class,extends,constructor,super,try,catch,finally,new,delete,typeof,instanceof,in,of,yield,case,break,continue,default,throw},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]",
+  morestring=[b]',
+  morestring=[b]`,
+}
+
 \title{Day 2: OWASP Top 10 Threats and Mitigation Strategies}
 \subtitle{Comprehensive Training with Practical Examples and Hands-on Exercises}
 \author{Security Training Team}
@@ -52,6 +71,586 @@
 
 \begin{frame}
 \titlepage
+\end{frame}
+
+% ===== New: Hands-on Focused Section =====
+\begin{frame}{Agenda Hari 2 (Praktik + Teori)}
+\begin{itemize}
+\item Tujuan: Memahami risiko OWASP Top 10 melalui praktik langsung
+\item Teori ringkas tiap risiko: akar masalah, skenario serangan, dampak
+\item Lab terarah: langkah eksploitasi aman dan mitigasi terukur
+\item Review hasil lab: indikator keberhasilan dan cara verifikasi
+\item Mini-CTF dan rubric penilaian
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Prasyarat \& Setup Lingkungan}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Perangkat yang dibutuhkan}
+\begin{itemize}
+\item Docker Desktop (Windows/Mac/Linux)
+\item PowerShell atau Terminal Bash
+\item OWASP ZAP / Burp (opsional)
+\item Postman atau curl
+\end{itemize}
+\textbf{Garis besar arsitektur}
+\begin{itemize}
+\item Aplikasi target: DVWA, Juice Shop, WebGoat
+\item Tools DAST: OWASP ZAP baseline scan
+\item Proxy debugging: Burp/ZAP
+\end{itemize}
+\column{0.5\textwidth}
+\textbf{Variabel lingkungan (contoh)}
+\begin{itemize}
+\item \texttt{DB\_PASSWORD}, \texttt{REDIS\_PASSWORD}
+\item \texttt{SESSION\_SECRET}
+\item \texttt{MONGODB\_URI} / \texttt{DATABASE\_URL}
+\end{itemize}
+\textbf{Catatan keamanan}
+\begin{itemize}
+\item Jalankan hanya di lingkungan lab terisolasi
+\item Jangan menggunakan data produksi
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Docker Compose: Lab Mandiri}
+\textbf{Jalankan seluruh target dan tools secara lokal}
+\begin{lstlisting}
+version: '3.8'
+services:
+  dvwa:
+    image: vulnerables/web-dvwa
+    ports:
+      - "8080:80"
+
+  juiceshop:
+    image: bkimminich/juice-shop
+    ports:
+      - "3000:3000"
+
+  webgoat:
+    image: webgoat/webgoat-8.2
+    ports:
+      - "8081:8080"
+
+  zap:
+    image: owasp/zap2docker-stable
+    command: zap-baseline.py -t http://dvwa:80 -I
+    depends_on:
+      - dvwa
+\end{lstlisting}
+\textbf{Perintah}
+\begin{itemize}
+\item \texttt{docker compose up -d}
+\item Akses: DVWA (\texttt{http://localhost:8080}), Juice Shop (\texttt{http://localhost:3000}), WebGoat (\texttt{http://localhost:8081/WebGoat})
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Metodologi Pengujian}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Pendekatan}
+\begin{itemize}
+\item SAST: analisis kode statis
+\item DAST: uji black-box aplikasi berjalan
+\item IAST: sensor di dalam aplikasi saat runtime
+\item Threat modeling: STRIDE, data flow
+\end{itemize}
+\column{0.5\textwidth}
+\textbf{Definisi Keberhasilan}
+\begin{itemize}
+\item Dapat mereproduksi kerentanan secara aman
+\item Menerapkan mitigasi dan memverifikasi perbaikan
+\item Menulis catatan uji dan rekomendasi
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ===== A01: Broken Access Control =====
+\begin{frame}{A01: Broken Access Control - Teori}
+\begin{itemize}
+\item Akar masalah: pemeriksaan otorisasi tidak konsisten atau hilang
+\item Pola umum: IDOR, bypass otorisasi, force browsing, mass assignment
+\item Dampak: kebocoran data, modifikasi data pengguna lain
+\item Strategi: verifikasi otorisasi server-side di tiap aksi dan objek
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{A01: Lab - IDOR dan Cek Otorisasi}
+\textbf{Target:} DVWA (modul File atau View Profile)
+\begin{enumerate}
+\item Login sebagai user biasa, catat \textit{request} untuk melihat profil: \texttt{/vulnerabilities/view\_user.php?id=2}
+\item Ubah parameter \texttt{id} menjadi milik user lain (mis. \texttt{1}) via Burp Repeater
+\item Observasi apakah data user lain terlihat (indikator IDOR)
+\item \textbf{Mitigasi:} tambahkan middleware cek kepemilikan sumber daya
+\end{enumerate}
+\vspace{0.2cm}
+\textbf{Contoh middleware (Express.js)}
+\begin{lstlisting}[language=JavaScript]
+// Pastikan resource dimiliki oleh user yang login
+function authorizeOwnership(getOwnerIdFromResource) {
+  return async (req, res, next) => {
+    try {
+      const resourceId = req.params.id;
+      const ownerId = await getOwnerIdFromResource(resourceId);
+      if (!req.user || String(req.user.id) !== String(ownerId)) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+      next();
+    } catch (e) { next(e); }
+  };
+}
+// Penggunaan: router.get('/users/:id', authorizeOwnership(getOwner), handler)
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{A01: Snippet Go + JS (ESM)}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Go: Middleware kepemilikan (net/http)}
+\begin{lstlisting}[language=Go]
+type OwnerFunc func(id string) (string, error)
+
+func AuthorizeOwnership(getOwner OwnerFunc, next http.Handler) http.Handler {
+  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    userID := r.Header.Get("X-User-ID") // contoh: hasil auth sebelumnya
+    id := r.URL.Query().Get("id")
+    ownerID, err := getOwner(id)
+    if err != nil || userID == "" || ownerID != userID {
+      http.Error(w, "forbidden", http.StatusForbidden)
+      return
+    }
+    next.ServeHTTP(w, r)
+  })
+}
+\end{lstlisting}
+\column{0.5\textwidth}
+\textbf{JS (ESM): Hindari kepercayaan sisi-klien}
+\begin{lstlisting}[language=JavaScript]
+// modules/validate.js
+export function isValidId(v){ return /^\d+$/.test(v); }
+
+// app.js (ESM)
+import { isValidId } from './modules/validate.js';
+const id = new URLSearchParams(location.search).get('id');
+if (!isValidId(id)) alert('Invalid');
+// CATATAN: Otorisasi wajib di server, ESM ini hanya usability.
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ===== A04: Insecure Design (Lab) =====
+\begin{frame}{A04: Lab - Threat Modeling \& Secure Design}
+\textbf{Tujuan:} Mengidentifikasi abuse case dan kontrol desain yang hilang.
+\begin{enumerate}
+\item Pilih satu fitur (mis. upload file atau reset password)
+\item Gambar data flow sederhana: sumber data, proses, penyimpanan, trust boundary
+\item Identifikasi ancaman (STRIDE): spoofing, tampering, repudiation, info disclosure, DoS, elevation of privilege
+\item Tentukan kontrol: validasi, autentikasi, otorisasi, rate limit, logging, enkripsi
+\item Verifikasi kontrol pada implementasi (code/config review singkat)
+\end{enumerate}
+\textbf{Artefak:} DFD ringkas + daftar kontrol yang dipilih + rencana uji.
+\end{frame}
+
+\begin{frame}[fragile]{A02: Snippet Go - TLS \& HSTS}
+\textbf{Go server dengan TLS modern + HSTS}
+\begin{lstlisting}[language=Go]
+srv := &http.Server{ Addr: ":443" }
+http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request){
+  w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+  w.Header().Set("X-Content-Type-Options", "nosniff")
+  w.Header().Set("X-Frame-Options", "DENY")
+  w.Header().Set("Content-Security-Policy", "default-src 'self'")
+  fmt.Fprintln(w, "ok")
+})
+// Pastikan sertifikat disediakan; gunakan reverse proxy jika perlu
+log.Fatal(srv.ListenAndServeTLS("server.crt", "server.key"))
+\end{lstlisting}
+\end{frame}
+
+% ===== A06: Vulnerable and Outdated Components (Lab) =====
+\begin{frame}[fragile]{A06: Lab - Dependency \& SBOM Scanning}
+\textbf{Langkah:}
+\begin{enumerate}
+\item Pindai dependencies proyek contoh (Node/Python/Java)
+\item Hasilkan SBOM dan scan untuk CVE
+\item Terapkan update minor/patch, verifikasi kompatibilitas
+\end{enumerate}
+\textbf{Perintah contoh}
+\begin{lstlisting}
+# Node.js
+npm ci
+npm audit --audit-level=high || true
+osv-scanner --lock package-lock.json || true
+
+# Python
+pip install -r requirements.txt
+pip-audit || true
+
+# Java (Maven)
+mvn -DskipTests org.owasp:dependency-check-maven:check || true
+
+# SBOM + scan container/artifact
+syft dir:. -o cyclonedx-json > sbom.json
+grype sbom:sbom.json || true
+\end{lstlisting}
+\textbf{Go (tambahan)}
+\begin{lstlisting}
+go mod tidy
+go list -m -u all            # cek update module
+govulncheck ./... || true    # scan CVE modul Go
+go mod verify                # verifikasi checksum
+\end{lstlisting}
+\textbf{Kriteria Sukses:} daftar CVE prioritas + PR update + bukti build lulus.
+\end{frame}
+
+% ===== A08: Software and Data Integrity Failures (Lab) =====
+\begin{frame}[fragile]{A08: Lab - Supply Chain Integrity}
+\textbf{Langkah:}
+\begin{enumerate}
+\item Verifikasi integritas artefak container dengan Sigstore Cosign
+\item Validasi signature webhook (HMAC) di aplikasi
+\item Kunci dependency ke lockfile dan aktifkan verifikasi di CI
+\end{enumerate}
+\textbf{Cosign verify (contoh)}
+\begin{lstlisting}
+COSIGN_EXPERIMENTAL=1 cosign verify ghcr.io/org/app:latest \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity "https://github.com/org/repo/.github/workflows/release.yml@refs/heads/main"
+\end{lstlisting}
+\textbf{Go modules di CI}
+\begin{lstlisting}
+govulncheck ./...
+go mod verify
+\end{lstlisting}
+\textbf{Verifikasi HMAC (Node.js)}
+\begin{lstlisting}[language=JavaScript]
+const crypto = require('crypto');
+function verifyWebhook(rawBody, signature, secret) {
+  const hmac = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(hmac));
+}
+\end{lstlisting}
+\textbf{Kriteria Sukses:} build hanya menerima artefak tersigned, webhook ditolak jika signature salah.
+\end{frame}
+
+% ===== A09: Logging and Monitoring Failures (Lab) =====
+\begin{frame}[fragile]{A09: Lab - Structured Logging \& Alerts}
+\textbf{Langkah:}
+\begin{enumerate}
+\item Tambahkan structured logging untuk event keamanan (auth, akses ditolak, input error)
+\item Kirim log ke file/stdout; uji rotasi/retensi
+\item Buat aturan alert sederhana untuk 5x gagal login/menit
+\end{enumerate}
+\textbf{Contoh (Node.js - winston)}
+\begin{lstlisting}[language=JavaScript]
+const winston = require('winston');
+const log = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [ new winston.transports.Console() ]
+});
+function logAuth(username, success) {
+  log.info({ event: 'auth', username, success, ts: Date.now() });
+}
+\end{lstlisting}
+\textbf{Kriteria Sukses:} log terbaca, lengkap, dan alert terpicu saat percobaan brute-force.
+\end{frame}
+
+% ===== A02: Cryptographic Failures =====
+\begin{frame}{A02: Cryptographic Failures - Teori}
+\begin{itemize}
+\item Prinsip: enkripsi in transit (TLS) dan at rest, manajemen kunci
+\item Anti-pola: HTTP tanpa TLS, algoritma lemah, kunci disimpan di repo
+\item Dampak: pencurian kredensial, manipulasi data
+\item Strategi: TLS modern, HSTS, rotasi kunci, secret manager
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{A02: Lab - HTTPS, HSTS, dan Header}
+\begin{enumerate}
+\item Akses login DVWA melalui HTTP, tangkap kredensial via ZAP (lab-only)
+\item Aktifkan TLS pada reverse proxy dan pasang HSTS
+\item Verifikasi dengan \texttt{curl -I https://localhost} dan periksa header
+\end{enumerate}
+\textbf{Contoh Nginx (ringkas)}
+\begin{lstlisting}
+server {
+  listen 443 ssl;
+  ssl_protocols TLSv1.2 TLSv1.3;
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-Frame-Options DENY;
+  add_header Content-Security-Policy "default-src 'self'";
+  location / { proxy_pass http://dvwa:80; }
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{A03: Snippet Go - Prepared Statement}
+\textbf{database/sql + driver MySQL}
+\begin{lstlisting}[language=Go]
+import (
+  "database/sql"
+  _ "github.com/go-sql-driver/mysql"
+)
+
+db, _ := sql.Open("mysql", os.Getenv("MYSQL_DSN"))
+id, _ := strconv.Atoi(r.URL.Query().Get("id"))
+row := db.QueryRowContext(r.Context(), "SELECT id,name FROM users WHERE id = ?", id)
+var user struct{ ID int; Name string }
+if err := row.Scan(&user.ID, &user.Name); err != nil { /* handle */ }
+json.NewEncoder(w).Encode(user)
+\end{lstlisting}
+\end{frame}
+
+% ===== A03: Injection =====
+\begin{frame}{A03: Injection - Teori}
+\begin{itemize}
+\item Pola: SQLi, NoSQLi, command injection, LDAP injection
+\item Akar masalah: konkatenasi input ke query/command tanpa sanitasi
+\item Strategi: prepared statements, validasi input, least privilege DB
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{A03: Lab - SQLi pada DVWA dan Mitigasi}
+\begin{enumerate}
+\item DVWA: menu SQL Injection, payload awal: \texttt{' OR 1=1 -- }
+\item Amati hasil enumerasi data
+\item \textbf{Mitigasi:} gunakan prepared statements
+\end{enumerate}
+\textbf{Contoh (Node.js - mysql2)}
+\begin{lstlisting}[language=JavaScript]
+const mysql = require('mysql2/promise');
+const pool = mysql.createPool({ uri: process.env.DATABASE_URL });
+app.get('/user', async (req, res) => {
+  const id = parseInt(req.query.id, 10);
+  const [rows] = await pool.execute('SELECT * FROM users WHERE id = ?', [id]);
+  res.json(rows[0] || {});
+});
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{A05: Snippet Go + HTML (ESM/CSP)}
+\begin{columns}
+\column{0.6\textwidth}
+\textbf{Go: Middleware header keamanan}
+\begin{lstlisting}[language=Go]
+func SecurityHeaders(next http.Handler) http.Handler {
+  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Security-Policy", "default-src 'self'")
+    w.Header().Set("X-Content-Type-Options", "nosniff")
+    w.Header().Set("X-Frame-Options", "DENY")
+    w.Header().Set("Referrer-Policy", "no-referrer")
+    next.ServeHTTP(w, r)
+  })
+}
+\end{lstlisting}
+\column{0.4\textwidth}
+\textbf{HTML: ESM + CSP}
+\begin{lstlisting}[language=HTML]
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; object-src 'none'">
+<script type="module" src="/app.js"></script>
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ===== A05: Security Misconfiguration =====
+\begin{frame}{A05: Security Misconfiguration - Teori}
+\begin{itemize}
+\item Umum: default credential, directory listing, pesan error verbose
+\item Header keamanan tidak aktif, CORS terlalu permisif
+\item Strategi: hardening, automation, baseline konfigurasi
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{A05: Lab - Header Keamanan dan Hardening}
+\begin{enumerate}
+\item Cek header: \texttt{curl -I http://localhost:8080}
+\item Tambahkan Helmet pada Express atau header di Nginx
+\item Verifikasi ulang header terpasang
+\end{enumerate}
+\textbf{Express + Helmet}
+\begin{lstlisting}[language=JavaScript]
+const helmet = require('helmet');
+app.use(helmet({
+  contentSecurityPolicy: { useDefaults: true },
+  hsts: { maxAge: 31536000, includeSubDomains: true }
+}));
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{A07: Snippet Go - Rate Limit \& Cookie}
+\begin{columns}
+\column{0.6\textwidth}
+\textbf{Rate limit sederhana per IP}
+\begin{lstlisting}[language=Go]
+var hits = make(map[string]int)
+var windowStart = time.Now()
+func RateLimit(next http.Handler) http.Handler {
+  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    if time.Since(windowStart) > time.Minute { hits = map[string]int{}; windowStart = time.Now() }
+    ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+    hits[ip]++
+    if hits[ip] > 100 { http.Error(w, "too many requests", 429); return }
+    next.ServeHTTP(w, r)
+  })
+}
+\end{lstlisting}
+\column{0.4\textwidth}
+\textbf{Cookie aman}
+\begin{lstlisting}[language=Go]
+http.SetCookie(w, &http.Cookie{
+  Name: "session", Value: token,
+  HttpOnly: true, Secure: true,
+  SameSite: http.SameSiteStrictMode,
+})
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ===== A07: Identification & Authentication Failures =====
+\begin{frame}{A07: Auth Failures - Teori}
+\begin{itemize}
+\item Masalah: password lemah, bruteforce, session fixation, token tidak aman
+\item Strategi: MFA, rate limiting, bcrypt/argon2, cookie \texttt{HttpOnly} + \texttt{Secure}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{A07: Lab - Rate Limit, Password Policy, Session}
+\begin{enumerate}
+\item Uji brute force ringan ke endpoint login
+\item Tambah rate limit dan lockout setelah N percobaan gagal
+\item Audit flag cookie: \texttt{HttpOnly}, \texttt{Secure}, \texttt{SameSite}
+\end{enumerate}
+\textbf{Contoh Rate Limit (Express)}
+\begin{lstlisting}[language=JavaScript]
+const rateLimit = require('express-rate-limit');
+const limiter = rateLimit({ windowMs: 15*60*1000, max: 100 });
+app.use('/login', limiter);
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{A10: Snippet Go - Validasi URL (SSRF)}
+\textbf{Allowlist skema + blok IP privat}
+\begin{lstlisting}[language=Go]
+func isPrivate(ip net.IP) bool {
+  private := []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"}
+  for _, cidr := range private {
+    _, n, _ := net.ParseCIDR(cidr); if n.Contains(ip) { return true }
+  }
+  return false
+}
+
+func validateURL(raw string) bool {
+  u, err := url.Parse(raw); if err != nil { return false }
+  if u.Scheme != "http" && u.Scheme != "https" { return false }
+  ips, err := net.LookupIP(u.Hostname()); if err != nil { return false }
+  for _, ip := range ips { if isPrivate(ip) { return false } }
+  return true
+}
+\end{lstlisting}
+\end{frame}
+
+% ===== Frontend ESM Patterns =====
+\begin{frame}[fragile]{Frontend ESM: Validasi \& Output Encoding}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Validasi input (ESM)}
+\begin{lstlisting}[language=JavaScript]
+// modules/validators.js
+export const isEmail = s => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s);
+export const isSafeLen = (s, n=100) => s.length <= n;
+\end{lstlisting}
+\begin{lstlisting}[language=JavaScript]
+// app.js
+import { isEmail, isSafeLen } from './modules/validators.js';
+const email = document.querySelector('#email').value;
+if(!isEmail(email) || !isSafeLen(email, 120)) alert('Invalid email');
+\end{lstlisting}
+\column{0.5\textwidth}
+\textbf{Output encoding aman}
+\begin{lstlisting}[language=JavaScript]
+const mount = document.getElementById('greeting');
+const name = new URLSearchParams(location.search).get('name') || '';
+// Jangan gunakan innerHTML untuk data yang tidak dipercaya
+mount.textContent = `Hello, ${name}`; // aman: textContent
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ===== A10: SSRF =====
+\begin{frame}{A10: SSRF - Teori}
+\begin{itemize}
+\item Pola: server melakukan fetch ke URL input pengguna
+\item Risiko: akses jaringan internal, metadata cloud, pemindaian internal
+\item Strategi: allowlist skema/host, blok alamat private, SSRF proxy
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{A10: Lab - Validasi URL dan Blok Jaringan Internal}
+\begin{enumerate}
+\item WebGoat: pelajaran SSRF, coba akses endpoint internal
+\item Terapkan validator URL dengan allowlist dan blok RFC1918
+\item Verifikasi akses ke host internal ditolak
+\end{enumerate}
+\textbf{Validator (Node.js)}
+\begin{lstlisting}[language=JavaScript]
+const { isIP } = require('net');
+function isPrivateIp(host) {
+  return /^10\.|^192\.168\.|^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host);
+}
+function validateUrl(input) {
+  try {
+    const u = new URL(input);
+    if (!['http:', 'https:'].includes(u.protocol)) return false;
+    if (isIP(u.hostname) && isPrivateIp(u.hostname)) return false;
+    return true;
+  } catch { return false; }
+}
+\end{lstlisting}
+\end{frame}
+
+% ===== Mini-CTF & Evaluasi =====
+\begin{frame}{Run Labs (Go Service)}
+\begin{itemize}
+\item Jalankan snippet Go (A05/A07/A10) sebagai service lokal
+\item Perintah cepat: \texttt{go mod tidy}, \texttt{go run .}
+\item Uji header: \texttt{curl -I http://localhost:PORT}
+\item Uji rate limit: loop \texttt{curl} > 100 req/menit, pastikan 429
+\item Uji SSRF: endpoint fetch URL hanya menerima skema HTTP/HTTPS publik
+\item Gunakan env: \texttt{SESSION\_SECRET}, \texttt{DATABASE\_URL} bila diperlukan
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Proxy ZAP/Burp untuk ESM}
+\begin{itemize}
+\item Set proxy browser: \texttt{127.0.0.1:8080} (ZAP) atau \texttt{127.0.0.1:8081} (Burp)
+\item Import CA ZAP/Burp ke browser agar HTTPS dapat diinspeksi
+\item Buka aplikasi target, jalankan skenario dari slide (login, cari, upload)
+\item Gunakan Repeater untuk memodifikasi parameter (IDOR/SQLi)
+\item Jalankan Baseline/Active Scan (ZAP) pada \texttt{http://localhost:...}
+\item Verifikasi mitigasi: header aktif, query terparametrisasi, blok SSRF
+\end{itemize}
+\end{frame}
+\begin{frame}{Mini-CTF: Tugas Akhir}
+\begin{itemize}
+\item Selesaikan 5 tantangan di Juice Shop (kategori Injection, Broken Access)
+\item Tulis laporan singkat: bukti, dampak, mitigasi
+\item Sertakan bukti verifikasi perbaikan (header, rate limit, prepared statements)
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Rubrik Penilaian}
+\begin{itemize}
+\item Reproduksi kerentanan (30\%)
+\item Implementasi mitigasi (40\%)
+\item Dokumentasi dan verifikasi (20\%)
+\item Kolaborasi/komunikasi (10\%)
+\end{itemize}
 \end{frame}
 
 \begin{frame}{Training Objectives}
@@ -502,30 +1101,30 @@ app.get('/api/search', async (req, res) => {
 \item \textbf{Use Prepared Statements}
 \begin{itemize}
 \item[\faIcon{check}] Parameterized queries for SQL
-\item[\faIcon{check}}]{ORM with proper escaping}
-\item[\faIcon{check}}]{Stored procedures with proper permissions}
-\item[\faIcon{check}}]{Input validation frameworks}
+\item[\faIcon{check}]{ORM with proper escaping}
+\item[\faIcon{check}]{Stored procedures with proper permissions}
+\item[\faIcon{check}]{Input validation frameworks}
 \end{itemize}
 \item \textbf{Input Validation}
 \begin{itemize}
-\item[\faIcon{check}}]{Whitelist approach}
-\item[\faIcon{check}}]{Input length restrictions}
-\item[\faIcon{check}}]{Type checking}
-\item[\faIcon{check}}]{Regular expression validation}
+\item[\faIcon{check}]{Whitelist approach}
+\item[\faIcon{check}]{Input length restrictions}
+\item[\faIcon{check}]{Type checking}
+\item[\faIcon{check}]{Regular expression validation}
 \end{itemize}
 \item \textbf{Output Encoding}
 \begin{itemize}
-\item[\faIcon{check}}]{HTML encoding for web output}
-\item[\faIcon{check}}]{JavaScript encoding}
-\item[\faIcon{check}}]{URL encoding}
-\item[\faIcon{check}}]{Context-aware encoding}
+\item[\faIcon{check}]{HTML encoding for web output}
+\item[\faIcon{check}]{JavaScript encoding}
+\item[\faIcon{check}]{URL encoding}
+\item[\faIcon{check}]{Context-aware encoding}
 \end{itemize}
 \item \textbf{Security Controls}
 \begin{itemize}
-\item[\faIcon{check}}]{Web Application Firewall (WAF)}
-\item[\faIcon{check}}]{Input sanitization libraries}
-\item[\faIcon{check}}]{Static Application Security Testing (SAST)}
-\item[\faIcon{check}}]{Dynamic Application Security Testing (DAST)}
+\item[\faIcon{check}]{Web Application Firewall (WAF)}
+\item[\faIcon{check}]{Input sanitization libraries}
+\item[\faIcon{check}]{Static Application Security Testing (SAST)}
+\item[\faIcon{check}]{Dynamic Application Security Testing (DAST)}
 \end{itemize}
 \end{enumerate}
 \end{columns}
@@ -679,7 +1278,7 @@ app.post('/api/login', loginLimiter, (req, res) => {
 \item[\faIcon{check}] Security design reviews
 \item[\faIcon{check}] Peer reviews
 \item[\faIcon{check}] Third-party assessments
-\item[\faIcon{check}] Continuous improvement}
+\item[\faIcon{check}] Continuous improvement
 \end{itemize}
 \end{enumerate}
 \end{columns}
@@ -703,7 +1302,7 @@ app.post('/api/login', loginLimiter, (req, res) => {
 \end{itemize}
 \column{0.5\textwidth}
 \textbf{Vulnerable Configuration:}
-\begin{lstlisting}[language=bash]
+\begin{lstlisting}
 # Vulnerable: Nginx misconfiguration
 server {
     listen 80;
@@ -744,7 +1343,7 @@ secure-file-priv = /
 \begin{columns}
 \column{0.5\textwidth}
 \textbf{Secure Configuration:}
-\begin{lstlisting}[language=bash]
+\begin{lstlisting}
 # Secure: Nginx configuration
 server {
     listen 443 ssl http2;
@@ -943,30 +1542,30 @@ async function securePasswordHash(password) {
 \item \textbf{Dependency Scanning}
 \begin{itemize}
 \item[\faIcon{check}] npm audit, Snyk, Dependabot
-\item[\faIcon{check}}]{OWASP Dependency Check}
-\item[\faIcon{check}}]{GitHub Dependabot alerts}
-\item[\faIcon{check}}]{Automated CI/CD scanning}
+\item[\faIcon{check}]{OWASP Dependency Check}
+\item[\faIcon{check}]{GitHub Dependabot alerts}
+\item[\faIcon{check}]{Automated CI/CD scanning}
 \end{itemize}
 \item \textbf{Version Management}
 \begin{itemize}
-\item[\faIcon{check}}]{Use caret (^) or tilde (~) operators}
-\item[\faIcon{check}}]{Regular updates testing}
-\item[\faIcon{check}}]{Semantic versioning}
-\item[\faIcon{check}}]{Patch management process}
+\item[\faIcon{check}]{Use caret (\textasciicircum) or tilde (\textasciitilde) operators}
+\item[\faIcon{check}]{Regular updates testing}
+\item[\faIcon{check}]{Semantic versioning}
+\item[\faIcon{check}]{Patch management process}
 \end{itemize}
 \item \textbf{Secure Alternatives}
 \begin{itemize}
-\item[\faIcon{check}}]{Use secure libraries}
-\item[\faIcon{check}}]{Avoid deprecated functions}
-\item[\faIcon{check}}]{Implement custom security}
-\item[\faIcon{check}}]{Code review of dependencies}
+\item[\faIcon{check}]{Use secure libraries}
+\item[\faIcon{check}]{Avoid deprecated functions}
+\item[\faIcon{check}]{Implement custom security}
+\item[\faIcon{check}]{Code review of dependencies}
 \end{itemize}
 \item \textbf{Monitoring and Updates}
 \begin{itemize}
-\item[\faIcon{check}}]{CVE monitoring}
-\item[\faIcon{check}}]{Security newsletters}
-\item[\faIcon{check}}]{Vendor security alerts}
-\item[\faIcon{check}}]{Regular update schedule}
+\item[\faIcon{check}]{CVE monitoring}
+\item[\faIcon{check}]{Security newsletters}
+\item[\faIcon{check}]{Vendor security alerts}
+\item[\faIcon{check}]{Regular update schedule}
 \end{itemize}
 \end{enumerate}
 \end{columns}
@@ -1131,30 +1730,30 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 \item \textbf{Strong Password Policies}
 \begin{itemize}
 \item[\faIcon{check}] Minimum 12 characters
-\item[\faIcon{check}}]{Complexity requirements}
-\item[\faIcon{check}}]{Password rotation}
-\item[\faIcon{check}}]{Password blacklist}
+\item[\faIcon{check}]{Complexity requirements}
+\item[\faIcon{check}]{Password rotation}
+\item[\faIcon{check}]{Password blacklist}
 \end{itemize}
 \item \textbf{Multi-Factor Authentication}
 \begin{itemize}
-\item[\faIcon{check}}]{TOTP (Google Authenticator)}
-\item[\faIcon{check}}]{SMS/Email verification}
-\item[\faIcon{check}}]{Hardware tokens}
-\item[\faIcon{check}}]{Biometric authentication}
+\item[\faIcon{check}]{TOTP (Google Authenticator)}
+\item[\faIcon{check}]{SMS/Email verification}
+\item[\faIcon{check}]{Hardware tokens}
+\item[\faIcon{check}]{Biometric authentication}
 \end{itemize}
 \item \textbf{Session Security}
 \begin{itemize}
-\item[\faIcon{check}}]{Secure session cookies}
-\item[\faIcon{check}}]{Session timeout}
-\item[\faIcon{check}}]{Session invalidation}
-\item[\faIcon{check}}]{CSRF protection}
+\item[\faIcon{check}]{Secure session cookies}
+\item[\faIcon{check}]{Session timeout}
+\item[\faIcon{check}]{Session invalidation}
+\item[\faIcon{check}]{CSRF protection}
 \end{itemize}
 \item \textbf{Account Protection}
 \begin{itemize}
-\item[\faIcon{check}}]{Account lockout policies}
-\item[\faIcon{check}}]{Brute force protection}
-\item[\faIcon{check}}]{Suspicious activity monitoring}
-\item[\faIcon{check}}]{Passwordless authentication}
+\item[\faIcon{check}]{Account lockout policies}
+\item[\faIcon{check}]{Brute force protection}
+\item[\faIcon{check}]{Suspicious activity monitoring}
+\item[\faIcon{check}]{Passwordless authentication}
 \end{itemize}
 \end{enumerate}
 \end{columns}
@@ -1348,31 +1947,31 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 \begin{enumerate}
 \item \textbf{Input Validation}
 \begin{itemize}
-\item[\faIcon{check}}]{Strict input validation}
-\item[\faIcon{check}}]{Type checking}
-\item[\faIcon{check}}]{Length restrictions}
-\item[\faIcon{check}}]{Format validation}
+\item[\faIcon{check}]{Strict input validation}
+\item[\faIcon{check}]{Type checking}
+\item[\faIcon{check}]{Length restrictions}
+\item[\faIcon{check}]{Format validation}
 \end{itemize}
 \item \textbf{Secure Deserialization}
 \begin{itemize}
-\item[\faIcon{check}}]{Use safe parsers}
-\item[\faIcon{check}}]{Validate before deserialization}
-\item[\faIcon{check}}]{Implement sandboxing}
-\item[\faIcon{check}}]{Use JSON instead of binary formats}
+\item[\faIcon{check}]{Use safe parsers}
+\item[\faIcon{check}]{Validate before deserialization}
+\item[\faIcon{check}]{Implement sandboxing}
+\item[\faIcon{check}]{Use JSON instead of binary formats}
 \end{itemize}
 \item \textbf{Data Integrity}
 \begin{itemize}
-\item[\faIcon{check}}]{Cryptographic hashing}
-\item[\faIcon{check}}]{Digital signatures}
-\item[\faIcon{check}}]{Checksum verification}
-\item[\faIcon{check}}]{Version control}
+\item[\faIcon{check}]{Cryptographic hashing}
+\item[\faIcon{check}]{Digital signatures}
+\item[\faIcon{check}]{Checksum verification}
+\item[\faIcon{check}]{Version control}
 \end{itemize}
 \item \textbf{File Security}
 \begin{itemize}
-\item[\faIcon{check}}]{File type validation}
-\item[\faIcon{check}}]{File size limits}
-\item[\faIcon{check}}]{Virus scanning}
-\item[\faIcon{check}}]{Secure file storage}
+\item[\faIcon{check}]{File type validation}
+\item[\faIcon{check}]{File size limits}
+\item[\faIcon{check}]{Virus scanning}
+\item[\faIcon{check}]{Secure file storage}
 \end{itemize}
 \end{enumerate}
 \end{columns}
@@ -1575,31 +2174,31 @@ app.get('/api/user/:id', async (req, res) => {
 \begin{enumerate}
 \item \textbf{Comprehensive Logging}
 \begin{itemize}
-\item[\faIcon{check}}]{Security events logging}
-\item[\faIcon{check}}]{Authentication events}
-\item[\faIcon{check}}]{Authorization events}
-\item[\faIcon{check}}]{Error events}
+\item[\faIcon{check}]{Security events logging}
+\item[\faIcon{check}]{Authentication events}
+\item[\faIcon{check}]{Authorization events}
+\item[\faIcon{check}]{Error events}
 \end{itemize}
 \item \textbf{Log Protection}
 \begin{itemize}
-\item[\faIcon{check}}]{Secure log storage}
-\item[\faIcon{check}}]{Log access controls}
-\item[\faIcon{check}}]{Log tamper detection}
-\item[\faIcon{check}}]{Log encryption}
+\item[\faIcon{check}]{Secure log storage}
+\item[\faIcon{check}]{Log access controls}
+\item[\faIcon{check}]{Log tamper detection}
+\item[\faIcon{check}]{Log encryption}
 \end{itemize}
 \item \textbf{Monitoring and Alerting}
 \begin{itemize}
-\item[\faIcon{check}}]{Real-time monitoring}
-\item[\faIcon{check}}]{Anomaly detection}
-\item[\faIcon{check}}]{Alert thresholds}
-\item[\faIcon{check}}]{Automated responses}
+\item[\faIcon{check}]{Real-time monitoring}
+\item[\faIcon{check}]{Anomaly detection}
+\item[\faIcon{check}]{Alert thresholds}
+\item[\faIcon{check}]{Automated responses}
 \end{itemize}
 \item \textbf{Log Management}
 \begin{itemize}
-\item[\faIcon{check}}]{Log rotation}
-\item[\faIcon{check}}]{Log retention policies}
-\item[\faIcon{check}}]{Log aggregation}
-\item[\faIcon{check}}]{Log analysis tools}
+\item[\faIcon{check}]{Log rotation}
+\item[\faIcon{check}]{Log retention policies}
+\item[\faIcon{check}]{Log aggregation}
+\item[\faIcon{check}]{Log analysis tools}
 \end{itemize}
 \end{enumerate}
 \end{columns}
@@ -1780,31 +2379,31 @@ app.get('/api/proxy', (req, res) => {
 \begin{enumerate}
 \item \textbf{URL Validation}
 \begin{itemize}
-\item[\faIcon{check}}]{Whitelist allowed domains}
-\item[\faIcon{check}}]{Validate URL format}
-\item[\faIcon{check}}]{Block IP addresses}
-\item[\faIcon{check}}]{Prevent localhost access}
+\item[\faIcon{check}]{Whitelist allowed domains}
+\item[\faIcon{check}]{Validate URL format}
+\item[\faIcon{check}]{Block IP addresses}
+\item[\faIcon{check}]{Prevent localhost access}
 \end{itemize}
 \item \textbf{Network Restrictions}
 \begin{itemize}
-\item[\faIcon{check}}]{Firewall rules}
-\item[\faIcon{check}}]{Network segmentation}
-\item[\faIcon{check}}]{Proxy restrictions}
-\item[\faIcon{check}}]{VPN limitations}
+\item[\faIcon{check}]{Firewall rules}
+\item[\faIcon{check}]{Network segmentation}
+\item[\faIcon{check}]{Proxy restrictions}
+\item[\faIcon{check}]{VPN limitations}
 \end{itemize}
 \item \textbf{Request Security}
 \begin{itemize}
-\item[\faIcon{check}}]{Request timeouts}
-\item[\faIcon{check}}]{Redirect prevention}
-\item[\faIcon{check}}]{Content validation}
-\item[\faIcon{check}}]{Header sanitization}
+\item[\faIcon{check}]{Request timeouts}
+\item[\faIcon{check}]{Redirect prevention}
+\item[\faIcon{check}]{Content validation}
+\item[\faIcon{check}]{Header sanitization}
 \end{itemize}
 \item \textbf{Monitoring and Detection}
 \begin{itemize}
-\item[\faIcon{check}}]{Request logging}
-\item[\faIcon{check}}]{Anomaly detection}
-\item[\faIcon{check}}]{Alerting on suspicious requests}
-\item[\faIcon{check}}]{Regular security assessments}
+\item[\faIcon{check}]{Request logging}
+\item[\faIcon{check}]{Anomaly detection}
+\item[\faIcon{check}]{Alerting on suspicious requests}
+\item[\faIcon{check}]{Regular security assessments}
 \end{itemize}
 \end{enumerate}
 \end{columns}
@@ -1815,7 +2414,7 @@ app.get('/api/proxy', (req, res) => {
 \column{0.5\textwidth}
 \textbf{Lab Objectives:}
 \begin{itemize}
-\item[\faIcon{target}] Identify vulnerabilities in web applications
+\item[\faIcon{bullseye}] Identify vulnerabilities in web applications
 \item[\faIcon{search}] Assess risk levels of identified threats
 \item[\faIcon{shield-alt}] Develop mitigation strategies
 \item[\faIcon{clipboard-check}] Create security testing reports
@@ -1883,29 +2482,29 @@ app.get('/api/proxy', (req, res) => {
 \end{itemize}
 \item \textbf{Input Validation}
 \begin{itemize}
-\item[\faIcon{check}}]{Whitelist validation}
-\item[\faIcon{check}}]{Input sanitization}
-\item[\faIcon{check}}]{Type checking}
-\item[\faIcon{check}}]{Length restrictions}
+\item[\faIcon{check}]{Whitelist validation}
+\item[\faIcon{check}]{Input sanitization}
+\item[\faIcon{check}]{Type checking}
+\item[\faIcon{check}]{Length restrictions}
 \end{itemize}
 \item \textbf{Security Headers}
 \begin{itemize}
-\item[\faIcon{check}}]{Content Security Policy}
-\item[\faIcon{check}}]{Strict Transport Security}
-\item[\faIcon{check}}]{X-Frame-Options}
-\item[\faIcon{check}}]{X-Content-Type-Options}
+\item[\faIcon{check}]{Content Security Policy}
+\item[\faIcon{check}]{Strict Transport Security}
+\item[\faIcon{check}]{X-Frame-Options}
+\item[\faIcon{check}]{X-Content-Type-Options}
 \end{itemize}
 \item \textbf{Monitoring and Logging}
 \begin{itemize}
-\item[\faIcon{check}}]{Security event logging}
-\item[\faIcon{check}}]{Real-time monitoring}
-\item[\faIcon{check}}]{Alerting system}
-\item[\faIcon{check}}]{Log analysis}
+\item[\faIcon{check}]{Security event logging}
+\item[\faIcon{check}]{Real-time monitoring}
+\item[\faIcon{check}]{Alerting system}
+\item[\faIcon{check}]{Log analysis}
 \end{itemize}
 \end{enumerate}
 \column{0.5\textwidth}
 \textbf{Docker Compose for Security Testing:}
-\begin{lstlisting}[language=yaml]
+\begin{lstlisting}
 version: '3.8'
 
 services:
@@ -1972,54 +2571,55 @@ volumes:
 \item \textbf{Cryptographic Failures}
 \begin{itemize}
 \item[\faIcon{check}] Strong encryption algorithms used
-\item[\faIcon{check}}]{Secure key management}
-\item[\faIcon{check}}]{Transport security implemented}
-\item[\faIcon{check}}]{Sensitive data protected}
+\item[\faIcon{check}]{Secure key management}
+\item[\faIcon{check}]{Transport security implemented}
+\item[\faIcon{check}]{Sensitive data protected}
 \end{itemize}
 \item \textbf{Injection}
 \begin{itemize}
-\item[\faIcon{check}}]{Parameterized queries used}
-\item[\faIcon{check}}]{Input validation implemented}
-\item[\faIcon{check}}]{Output encoding applied}
-\item[\faIcon{check}}]{Injection testing performed}
+\item[\faIcon{check}]{Parameterized queries used}
+\item[\faIcon{check}]{Input validation implemented}
+\item[\faIcon{check}]{Output encoding applied}
+\item[\faIcon{check}]{Injection testing performed}
 \end{itemize}
 \item \textbf{Insecure Design}
 \begin{itemize}
-\item[\faIcon{check}}]{Threat modeling conducted}
-\item[\faIcon{check}}]{Security by design principles}
-\item[\faIcon{check}}]{Zero trust architecture}
-\item[\faIcon{check}}]{Secure design patterns}
+\item[\faIcon{check}]{Threat modeling conducted}
+\item[\faIcon{check}]{Security by design principles}
+\item[\faIcon{check}]{Zero trust architecture}
+\item[\faIcon{check}]{Secure design patterns}
 \end{itemize}
+\end{enumerate}
 \column{0.5\textwidth}
 \textbf{Security Configuration Checklist:}
 \begin{enumerate}
 \item \textbf{Security Misconfiguration}
 \begin{itemize}
-\item[\faIcon{check}}]{Default credentials changed}
-\item[\faIcon{check}}]{Security headers configured}
-\item[\faIcon{check}}]{Error messages secured}
-\item[\faIcon{check}}]{Services properly configured}
+\item[\faIcon{check}]{Default credentials changed}
+\item[\faIcon{check}]{Security headers configured}
+\item[\faIcon{check}]{Error messages secured}
+\item[\faIcon{check}]{Services properly configured}
 \end{itemize}
 \item \textbf{Vulnerable Components}
 \begin{itemize}
-\item[\faIcon{check}}]{Dependencies scanned}
-\item[\faIcon{check}}]{Known vulnerabilities patched}
-\item[\faIcon{check}}]{Outdated components updated}
-\item[\faIcon{check}}]{Secure alternatives used}
+\item[\faIcon{check}]{Dependencies scanned}
+\item[\faIcon{check}]{Known vulnerabilities patched}
+\item[\faIcon{check}]{Outdated components updated}
+\item[\faIcon{check}]{Secure alternatives used}
 \end{itemize}
 \item \textbf{Authentication Failures}
 \begin{itemize}
-\item[\faIcon{check}}]{Strong password policies}
-\item[\faIcon{check}}]{Multi-factor authentication}
-\item[\faIcon{check}}]{Secure session management}
-\item[\faIcon{check}}]{Account protection measures}
+\item[\faIcon{check}]{Strong password policies}
+\item[\faIcon{check}]{Multi-factor authentication}
+\item[\faIcon{check}]{Secure session management}
+\item[\faIcon{check}]{Account protection measures}
 \end{itemize}
 \item \textbf{Logging and Monitoring}
 \begin{itemize}
-\item[\faIcon{check}}]{Security events logged}
-\item[\faIcon{check}}]{Monitoring implemented}
-\item[\faIcon{check}}]{Alerting configured}
-\item[\faIcon{check}}]{Log retention policies}
+\item[\faIcon{check}]{Security events logged}
+\item[\faIcon{check}]{Monitoring implemented}
+\item[\faIcon{check}]{Alerting configured}
+\item[\faIcon{check}]{Log retention policies}
 \end{itemize}
 \end{enumerate}
 \end{columns}
@@ -2038,9 +2638,9 @@ volumes:
 \textbf{Security Best Practices:}
 \begin{itemize}
 \item[\faIcon{check-circle}] Defense in depth
-\item[\faIcon{check-circle}}]{Principle of least privilege}
-\item[\faIcon{check-circle}}]{Security by design}
-\item[\faIcon{check-circle}}]{Continuous security testing}
+\item[\faIcon{check-circle}]{Principle of least privilege}
+\item[\faIcon{check-circle}]{Security by design}
+\item[\faIcon{check-circle}]{Continuous security testing}
 \end{itemize}
 \column{0.5\textwidth}
 \textbf{Practical Implementation:}
@@ -2069,3 +2669,4 @@ volumes:
 \end{frame}
 
 \end{document}
+

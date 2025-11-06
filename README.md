@@ -129,6 +129,50 @@ Kelas Pentest Indonesia
 ## Web Application Architecture
 ## Web Application Threats
 
+## Day 2 Slides: OWASP Top 10 Threats & Mitigation
+- Slides: `webmitigation/slide/day2_owasp_top10_threats_mitigation.tex`
+- PDF build output: `webmitigation/slide/day2_owasp_top10_threats_mitigation.pdf`
+
+### Compile LaTeX to PDF
+- Windows (MiKTeX)
+  - Install MiKTeX (ensure on-demand packages allowed)
+  - Open PowerShell, run:
+    - `cd webmitigation/slide`
+    - `pdflatex -interaction=nonstopmode -halt-on-error day2_owasp_top10_threats_mitigation.tex`
+    - Run twice to resolve references
+- Linux (TeX Live)
+  - Install TeX Live full or required packages (`beamer`, `pgf`, `pgf-pie`, `listings`, `fontawesome5`)
+  - `cd webmitigation/slide && pdflatex -interaction=nonstopmode -halt-on-error day2_owasp_top10_threats_mitigation.tex`
+- Docker (isolated build)
+  - `docker run --rm -v %CD%/webmitigation/slide:/work -w /work texlive/texlive pdflatex -interaction=nonstopmode -halt-on-error day2_owasp_top10_threats_mitigation.tex`
+  - On Linux/macOS replace `%CD%` with `$PWD`
+
+### Run Labs (Docker Compose)
+- Prereqs: Docker Desktop, browser (Chrome/Firefox), optional OWASP ZAP/Burp
+- Start lab targets:
+  - `cd webmitigation/slide`
+  - `docker compose up -d` (see “Docker Compose: Lab Mandiri” slide)
+- Access targets:
+  - DVWA: `http://localhost:8080`
+  - Juice Shop: `http://localhost:3000`
+  - WebGoat: `http://localhost:8081/WebGoat`
+
+### Run Go Sample Service (Security Headers / Rate Limit / SSRF)
+- Create a small Go service or reuse snippets in slides (A05, A07, A10)
+- Quick run example:
+  - `go run .` (ensure `go.mod` exists)
+  - Test with `curl -I http://localhost:PORT` and verify headers
+- Security checks for Go modules:
+  - `go mod tidy && go list -m -u all`
+  - `govulncheck ./...` and `go mod verify`
+
+### Use Proxy (ZAP/Burp) with Browser + ESM
+- Set browser proxy to ZAP/Burp listener (e.g., `127.0.0.1:8080`)
+- Import ZAP/Burp CA cert into the browser to intercept HTTPS
+- Open target app via browser and exercise flows from slides
+- In ZAP: use Baseline or Active Scan against `http://localhost:...`
+- In Burp: define Target Scope, use Repeater/Intruder for lab steps
+
 # Understanding Session Hijacking Attacks and Countermeasures
 ## Spoofing
 ## Session Hijacking Tools

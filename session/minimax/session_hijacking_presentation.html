@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding Session Hijacking Attacks and Countermeasures</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow: hidden;
+        }
+
+        .presentation {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slide {
+            width: 90%;
+            max-width: 1200px;
+            height: 85%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 60px;
+            display: none;
+            flex-direction: column;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            display: flex;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .slide-number {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #764ba2;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin: 25px 0 15px 0;
+        }
+
+        h4 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin: 20px 0 10px 0;
+        }
+
+        .subtitle {
+            font-size: 1.5em;
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .author {
+            text-align: center;
+            font-size: 1.2em;
+            color: #888;
+            margin-top: 40px;
+        }
+
+        ul, ol {
+            margin: 20px 0 20px 30px;
+            line-height: 1.8;
+        }
+
+        li {
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+
+        .highlight {
+            background: #ffeb3b;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .warning {
+            background: #ff5722;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 5px solid #d84315;
+        }
+
+        .info {
+            background: #2196f3;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 5px solid #1976d2;
+        }
+
+        .success {
+            background: #4caf50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 5px solid #388e3c;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        .code-block .comment {
+            color: #6a9955;
+        }
+
+        .code-block .keyword {
+            color: #569cd6;
+        }
+
+        .code-block .string {
+            color: #ce9178;
+        }
+
+        .code-block .function {
+            color: #dcdcaa;
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(118, 75, 162, 0.4);
+        }
+
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+
+        .card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .attack-type {
+            border-left: 5px solid #ff5722;
+        }
+
+        .defense-type {
+            border-left: 5px solid #4caf50;
+        }
+
+        .tools-section {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .cli-command {
+            background: #000;
+            color: #00ff00;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            border: 1px solid #333;
+        }
+
+        .flow-diagram {
+            text-align: center;
+            margin: 30px 0;
+            font-size: 1.2em;
+        }
+
+        .arrow {
+            font-size: 2em;
+            color: #667eea;
+            margin: 0 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>Understanding Session Hijacking Attacks and Countermeasures</h1>
+            <p class="subtitle">Comprehensive Guide with Practical Implementation using CLI & Golang</p>
+            <div class="author">
+                <p><strong>Duration:</strong> 1 Day Workshop</p>
+                <p><strong>Method:</strong> Theory + Hands-on Practice</p>
+                <p><strong>Author:</strong> MiniMax Agent</p>
+                <p><strong>Date:</strong> November 2025</p>
+            </div>
+            <div class="slide-number">1 / 15</div>
+        </div>
+
+        <!-- Slide 2: Objective -->
+        <div class="slide">
+            <h2>Learning Objectives</h2>
+            <div class="success">
+                <h3>What You'll Learn:</h3>
+                <ul>
+                    <li>Comprehensive understanding of session hijacking attacks</li>
+                    <li>Identify various session hijacking techniques and vulnerabilities</li>
+                    <li>Implement security controls to prevent attacks</li>
+                    <li>Utilize detection tools to identify hijacking attempts</li>
+                    <li>Apply Golang for creating security tools and demonstrations</li>
+                    <li>Master CLI tools for network analysis and security testing</li>
+                </ul>
+            </div>
+            <div class="info">
+                <h4>Practical Focus:</h4>
+                <p>This workshop combines theoretical knowledge with hands-on practice using real CLI tools and Golang implementations to demonstrate both attack scenarios and defensive measures.</p>
+            </div>
+            <div class="slide-number">2 / 15</div>
+        </div>
+
+        <!-- Slide 3: Overview -->
+        <div class="slide">
+            <h2>Session Hijacking: Definition & Overview</h2>
+            
+            <h3>What is Session Hijacking?</h3>
+            <p>Session hijacking is a cyber attack where an attacker takes control of a user's session by stealing or predicting session tokens/identifiers.</p>
+            
+            <div class="warning">
+                <h4>⚠️ Key Threat:</h4>
+                <p>Attackers exploit vulnerabilities in session management to gain unauthorized access to user accounts and sensitive data.</p>
+            </div>
+
+            <h3>How It Works:</h3>
+            <div class="flow-diagram">
+                <div>User Login → Session Created → Token Generated</div>
+                <div class="arrow">⬇️</div>
+                <div>Attacker Steals Token → Uses Token → Gains Access</div>
+                <div class="arrow">⬇️</div>
+                <div>Unauthorized Session Control</div>
+            </div>
+
+            <h3>Real-World Impact:</h3>
+            <ul>
+                <li>Account takeover and identity theft</li>
+                <li>Financial fraud and theft</li>
+                <li>Data breach and privacy violations</li>
+                <li>Corporate espionage</li>
+            </ul>
+            <div class="slide-number">3 / 15</div>
+        </div>
+
+        <!-- Slide 4: Types Overview -->
+        <div class="slide">
+            <h2>Types of Session Hijacking Attacks</h2>
+            
+            <div class="grid-2">
+                <div class="card attack-type">
+                    <h4>🔴 Network Level</h4>
+                    <ul>
+                        <li>TCP/IP Hijacking</li>
+                        <li>Man-in-the-Middle</li>
+                        <li>Packet Sniffing</li>
+                    </ul>
+                </div>
+                
+                <div class="card attack-type">
+                    <h4>🔴 Application Level</h4>
+                    <ul>
+                        <li>Session Replay</li>
+                        <li>Session Fixation</li>
+                        <li>Cross-Site Scripting</li>
+                    </ul>
+                </div>
+                
+                <div class="card attack-type">
+                    <h4>🔴 Client-Side</h4>
+                    <ul>
+                        <li>Man-in-the-Browser</li>
+                        <li>Cookie Theft</li>
+                        <li>CSRF Attacks</li>
+                    </ul>
+                </div>
+                
+                <div class="card attack-type">
+                    <h4>🔴 Advanced</h4>
+                    <ul>
+                        <li>CRIME Attack</li>
+                        <li>BEAST Attack</li>
+                        <li>BREACH Attack</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="info">
+                <p>We'll explore each type with practical examples and implement detection/ prevention using Golang and CLI tools.</p>
+            </div>
+            <div class="slide-number">4 / 15</div>
+        </div>
+
+        <!-- Slide 5: Network Level Hijacking -->
+        <div class="slide">
+            <h2>Network-Level Session Hijacking</h2>
+            
+            <h3>TCP/IP Hijacking</h3>
+            <p>Attackers intercept and take control of TCP connections by predicting sequence numbers.</p>
+
+            <div class="code-block">
+<span class="comment">// Golang example: Simple TCP session monitoring</span>
+<span class="keyword">package</span> main
+
+<span class="keyword">import</span> (
+    <span class="string">"fmt"</span>
+    <span class="string">"net"</span>
+    <span class="string">"os"</span>
+    <span class="string">"strings"</span>
+    <span class="string">"time"</span>
+)
+
+<span class="keyword">func</span> <span class="function">monitorConnection</span>(conn net.Conn) {
+    <span class="keyword">defer</span> conn.Close()
+    <span class="keyword">var</span> sequenceNumber <span class="keyword">uint32</span> = <span class="string">1000</span>
+    
+    <span class="keyword">for</span> {
+        <span class="keyword">select</span> {
+        <span class="keyword">case</span> &lt;-time.After(<span class="string">5</span>*time.Second):
+            <span class="comment">// Check for abnormal sequence number jumps</span>
+            <span class="keyword">if</span> <span class="function">detectAnomaly</span>(sequenceNumber) {
+                <span class="function">logSuspiciousActivity</span>(conn.RemoteAddr())
+            }
+            sequenceNumber++
+        <span class="keyword">default</span>:
+            <span class="comment">// Continue monitoring</span>
+        }
+    }
+}
+            </div>
+
+            <div class="cli-command">
+# Network monitoring with tcpdump
+sudo tcpdump -i eth0 -n 'tcp[tcpflags] & tcp-push !=0' -A
+            </div>
+            <div class="slide-number">5 / 15</div>
+        </div>
+
+        <!-- Slide 6: Application Level Hijacking -->
+        <div class="slide">
+            <h2>Application-Level Session Hijacking</h2>
+            
+            <h3>Session Replay Attack</h3>
+            <p>Attackers capture valid session tokens and replay them to gain unauthorized access.</p>
+
+            <div class="code-block">
+<span class="comment">// Golang: Session replay detection implementation</span>
+<span class="keyword">package</span> main
+
+<span class="keyword">import</span> (
+    <span class="string">"crypto/sha256"</span>
+    <span class="string">"database/sql"</span>
+    <span class="string">"fmt"</span>
+    <span class="string">"time"</span>
+)
+
+<span class="keyword">type</span> SessionTracker <span class="keyword">struct</span> {
+    db *sql.DB
+}
+
+<span class="keyword">func</span> <span class="function">NewSessionTracker</span>(db *sql.DB) *SessionTracker {
+    <span class="keyword">return</span> &SessionTracker{db: db}
+}
+
+<span class="comment">// Check if session token has been used before</span>
+<span class="keyword">func</span> (st *SessionTracker) <span class="function">IsReplayAttempt</span>(token <span class="keyword">string</span>) (bool, error) {
+    tokenHash := <span class="function">sha256.Sum256</span>([]byte(token))
+    
+    <span class="keyword">var</span> usedAt time.Time
+    <span class="keyword">err</span> := st.db.<span class="function">QueryRow</span>(
+        <span class="string">"SELECT used_at FROM session_usage WHERE token_hash = ?"</span>, 
+        tokenHash[:],
+    ).<span class="function">Scan</span>(&usedAt)
+    
+    <span class="keyword">if</span> err == sql.ErrNoRows {
+        <span class="comment">// First use - record it</span>
+        <span class="keyword">return</span> <span class="keyword">false</span>, st.<span class="function">recordUsage</span>(tokenHash[:], time.Now())
+    }
+    
+    <span class="comment">// Token already used - potential replay attack</span>
+    <span class="keyword">return</span> <span class="keyword">true</span>, <span class="keyword">nil</span>
+}
+            </div>
+
+            <div class="warning">
+                <h4>Prevention Strategy:</h4>
+                <ul>
+                    <li>Implement token usage tracking</li>
+                    <li>Set token expiration times</li>
+                    <li>Use one-time tokens where possible</li>
+                    <li>Validate token usage patterns</li>
+                </ul>
+            </div>
+            <div class="slide-number">6 / 15</div>
+        </div>
+
+        <!-- Slide 7: Session Fixation -->
+        <div class="slide">
+            <h2>Session Fixation Attack</h2>
+            
+            <h3>How It Works:</h3>
+            <ol>
+                <li>Attacker obtains a valid session ID</li>
+                <li>Forces victim to use this session ID</li>
+                <li>Victim logs in with attacker-controlled session</li>
+                <li>Attacker gains access to victim's session</li>
+            </ol>
+
+            <div class="code-block">
+<span class="comment">// Golang: Session fixation prevention</span>
+<span class="keyword">package</span> main
+
+<span class="keyword">import</span> (
+    <span class="string">"crypto/rand"</span>
+    <span class="string">"encoding/hex"</span>
+    <span class="string">"net/http"</span>
+    <span class="string">"time"</span>
+)
+
+<span class="keyword">func</span> <span class="function">GenerateSecureSessionID</span>() <span class="keyword">string</span> {
+    bytes := <span class="keyword">make</span>([]byte, <span class="string">32</span>)
+    rand.<span class="function">Read</span>(bytes)
+    <span class="keyword">return</span> hex.<span class="function">EncodeToString</span>(bytes)
+}
+
+<span class="keyword">func</span> <span class="function">RegenerateSessionID</span>(w http.ResponseWriter, r *http.Request) {
+    <span class="comment">// Create new session ID after login</span>
+    <span class="keyword">oldSession</span>, <span class="keyword">err</span> := store.<span class="function">Get</span>(r, <span class="string">"session"</span>)
+    <span class="keyword">if</span> <span class="keyword">err</span> != <span class="keyword">nil</span> {
+        <span class="keyword">return</span>
+    }
+    
+    <span class="comment">// Store old data</span>
+    <span class="keyword">data</span> := <span class="keyword">make</span>(map[<span class="keyword">interface</span>{}]<span class="keyword">interface</span>{})
+    <span class="keyword">for</span> <span class="keyword">key</span>, <span class="keyword">value</span> := <span class="keyword">range</span> oldSession.<span class="function">Values</span> {
+        <span class="keyword">data</span>[<span class="keyword">key</span>] = <span class="keyword">value</span>
+    }
+    
+    <span class="comment">// Delete old session</span>
+    store.<span class="function">Delete</span>(r, w, <span class="string">"session"</span>)
+    
+    <span class="comment">// Create new session with new ID</span>
+    <span class="keyword">newSession</span>, <span class="keyword">_</span> := store.<span class="function">Get</span>(r, <span class="string">"session"</span>)
+    <span class="keyword">for</span> <span class="keyword">key</span>, <span class="keyword">value</span> := <span class="keyword">range</span> <span class="keyword">data</span> {
+        newSession.<span class="function">Values</span>[<span class="keyword">key</span>] = <span class="keyword">value</span>
+    }
+    newSession.<span class="function">Values</span>[<span class="string">"session_id"</span>] = <span class="function">GenerateSecureSessionID</span>()
+    <span class="keyword">newSession</span>.<span class="function">Values</span>[<span class="string">"created_at"</span>] = time.Now()
+    
+    store.<span class="function">Save</span>(r, w, newSession)
+}
+            </div>
+            <div class="slide-number">7 / 15</div>
+        </div>
+
+        <!-- Slide 8: Man-in-the-Browser -->
+        <div class="slide">
+            <h2>Man-in-the-Browser (MITB) Attack</h2>
+            
+            <h3>MITB Characteristics:</h3>
+            <ul>
+                <li>Malware infects victim's browser</li>
+                <li>Intercepts and modifies web traffic</li>
+                <li>Bypasses SSL/TLS encryption</li>
+                <li>Steals credentials and session data</li>
+            </ul>
+
+            <div class="code-block">
+<span class="comment">// Golang: Browser extension communication monitoring</span>
+<span class="keyword">package</span> main
+
+<span class="keyword">import</span> (
+    <span class="string">"crypto/tls"</span>
+    <span class="string">"fmt"</span>
+    <span class="string">"net/http"</span>
+    <span class="string">"time"</span>
+)
+
+<span class="keyword">type</span> MITBDetector <span class="keyword">struct</span> {}
+
+<span class="keyword">func</span> (d *MITBDetector) <span class="function">CheckCertificatePinning</span>(url <span class="keyword">string</span>) error {
+    <span class="keyword">tr</span> := &http.Transport{
+        TLSClientConfig: &tls.Config{
+            InsecureSkipVerify: <span class="keyword">false</span>,
+            VerifyPeerCertificate: <span class="keyword">func</span>(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+                <span class="keyword">if</span> <span class="function">detectUnusualCertificate</span>(rawCerts) {
+                    <span class="keyword">return</span> fmt.<span class="function">Errorf</span>(<span class="string">"potential MITB detected: certificate mismatch"</span>)
+                }
+                <span class="keyword">return</span> <span class="keyword">nil</span>
+            },
+        },
+    }
+    
+    <span class="keyword">client</span> := &http.Client{Transport: <span class="keyword">tr</span>, Timeout: <span class="string">10</span>*time.Second}
+    <span class="keyword">resp</span>, <span class="keyword">err</span> := client.<span class="function">Get</span>(url)
+    <span class="keyword">if</span> <span class="keyword">err</span> != <span class="keyword">nil</span> {
+        <span class="keyword">return</span> err
+    }
+    <span class="keyword">defer</span> resp.Body.<span class="function">Close</span>()
+    
+    <span class="keyword">return</span> <span class="keyword">nil</span>
+}
+
+<span class="keyword">func</span> <span class="function">detectUnusualCertificate</span>(rawCerts [][]byte) <span class="keyword">bool</span> {
+    <span class="comment">// Implement certificate anomaly detection</span>
+    <span class="keyword">for</span> <span class="keyword">_</span>, <span class="keyword">cert</span> := <span class="keyword">range</span> rawCerts {
+        <span class="keyword">if</span> <span class="function">isSelfSigned</span>(cert) || <span class="function">hasUnusualExtension</span>(cert) {
+            <span class="keyword">return</span> <span class="keyword">true</span>
+        }
+    }
+    <span class="keyword">return</span> <span class="keyword">false</span>
+}
+            </div>
+
+            <div class="info">
+                <h4>MITB Detection Strategies:</h4>
+                <ul>
+                    <li>Certificate pinning validation</li>
+                    <li>Browser integrity checks</li>
+                    <li>Behavioral analysis</li>
+                    <li>Anti-malware integration</li>
+                </ul>
+            </div>
+            <div class="slide-number">8 / 15</div>
+        </div>
+
+        <!-- Slide 9: CRIME Attack -->
+        <div class="slide">
+            <h2>CRIME Attack (Compression Ratio Info-Leak)</h2>
+            
+            <h3>Attack Methodology:</h3>
+            <p>Exploits TLS/SSL compression to infer sensitive data through compression ratio analysis.</p>
+
+            <div class="code-block">
+<span class="comment">// Golang: CRIME attack simulation and detection</span>
+<span class="keyword">package</span> main
+
+<span class="keyword">import</span> (
+    <span class="string">"bytes"</span>
+    <span class="string">"compress/gzip"</span>
+    <span class="string">"fmt"</span>
+    <span class="string">"io"</span>
+    <span class="string">"strings"</span>
+)
+
+<span class="keyword">type</span> CRIMEDetector <span class="keyword">struct</span> {}
+
+<span class="keyword">func</span> (d *CRIMEDetector) <span class="function">MeasureCompression</span>(data <span class="keyword">string</span>) (int, error) {
+    <span class="keyword">var</span> buf bytes.Buffer
+    gz := gzip.<span class="function">NewWriter</span>(&buf)
+    
+    <span class="keyword">if</span> _, <span class="keyword">err</span> := gz.<span class="function">Write</span>([]byte(data)); <span class="keyword">err</span> != <span class="keyword">nil</span> {
+        <span class="keyword">return</span> <span class="string">0</span>, err
+    }
+    gz.<span class="function">Close</span>()
+    
+    <span class="keyword">return</span> buf.<span class="function">Len</span>(), <span class="keyword">nil</span>
+}
+
+<span class="comment">// Detect potential CRIME attack by analyzing compression patterns</span>
+<span class="keyword">func</span> (d *CRIMEDetector) <span class="function">DetectCRIME</span>(requests []string) <span class="keyword">bool</span> {
+    <span class="keyword">var</span> compressionRatios []<span class="keyword">int</span>
+    
+    <span class="keyword">for</span> <span class="keyword">_</span>, <span class="keyword">req</span> := <span class="keyword">range</span> requests {
+        <span class="keyword">size</span>, <span class="keyword">err</span> := d.<span class="function">MeasureCompression</span>(req)
+        <span class="keyword">if</span> <span class="keyword">err</span> == <span class="keyword">nil</span> {
+            compressionRatios = <span class="function">append</span>(compressionRatios, <span class="keyword">size</span>)
+        }
+    }
+    
+    <span class="keyword">return</span> d.<span class="function">analyzeCompressionPattern</span>(compressionRatios)
+}
+
+<span class="keyword">func</span> (d *CRIMEDetector) <span class="function">analyzeCompressionPattern</span>(ratios []<span class="keyword">int</span>) <span class="keyword">bool</span> {
+    <span class="keyword">if</span> <span class="function">len</span>(ratios) < <span class="string">10</span> {
+        <span class="keyword">return</span> <span class="keyword">false</span> <span class="comment">// Need sufficient data</span>
+    }
+    
+    <span class="comment">// Look for statistically significant compression ratio changes</span>
+    <span class="keyword">variation</span> := <span class="function">calculateVariation</span>(ratios)
+    <span class="keyword">return</span> variation > <span class="string">100</span> <span class="comment">// Threshold for CRIME detection</span>
+}
+            </div>
+
+            <div class="warning">
+                <h4>⚠️ Mitigation:</h4>
+                <ul>
+                    <li>Disable TLS/SSL compression</li>
+                    <li>Use random padding</li>
+                    <li>Implement request rate limiting</li>
+                </ul>
+            </div>
+            <div class="slide-number">9 / 15</div>
+        </div>
+
+        <!-- Slide 10: Session Hijacking Tools -->
+        <div class="slide">
+            <h2>Session Hijacking Tools & CLI Usage</h2>
+            
+            <div class="grid-2">
+                <div class="tools-section">
+                    <h4>🔧 Network Analysis Tools</h4>
+                    <div class="cli-command">
+# Wireshark - Network packet analysis
+sudo wireshark -i eth0 -f "tcp port 80 or 443"
+
+# tcpdump - Command line packet capture
+sudo tcpdump -i eth0 -w session_capture.pcap
+
+# nmap - Network discovery
+nmap -sS -O target_ip
+                    </div>
+                </div>
+                
+                <div class="tools-section">
+                    <h4>🔧 Session Analysis Tools</h4>
+                    <div class="cli-command">
+# Burp Suite - Web application testing
+burpsuite &
+
+# OWASP ZAP - Security testing
+zaproxy &
+
+# ettercap - Network sniffing
+sudo ettercap -T -i eth0
+                    </div>
+                </div>
+            </div>
+
+            <div class="code-block">
+<span class="comment">// Golang: Custom session monitoring tool</span>
+<span class="keyword">package</span> main
+
+<span class="keyword">import</span> (
+    <span class="string">"fmt"</span>
+    <span class="string">"github.com/google/gopacket"</span>
+    <span class="string">"github.com/google/gopacket/pcap"</span>
+)
+
+<span class="keyword">type</span> SessionMonitor <span class="keyword">struct</span> {
+    handle *pcap.Handle
+}
+
+<span class="keyword">func</span> <span class="function">NewSessionMonitor</span>(device <span class="keyword">string</span>) (*SessionMonitor, error) {
+    handle, <span class="keyword">err</span> := pcap.<span class="function">OpenLive</span>(device, <span class="string">1600</span>, <span class="keyword">true</span>, pcap.BlockForever)
+    <span class="keyword">if</span> <span class="keyword">err</span> != <span class="keyword">nil</span> {
+        <span class="keyword">return</span> <span class="keyword">nil</span>, err
+    }
+    
+    <span class="keyword">return</span> &SessionMonitor{handle: handle}, <span class="keyword">nil</span>
+}
+
+<span class="keyword">func</span> (sm *SessionMonitor) <span class="function">StartCapture</span>() {
+    <span class="keyword">packetSource</span> := gopacket.<span class="function">NewPacketSource</span>(sm.handle, sm.handle.<span class="function">LinkType</span>())
+    
+    <span class="keyword">for</span> packet := <span class="keyword">range</span> packetSource.<span class="function">Packets</span>() {
+        <span class="function">analyzePacket</span>(packet)
+    }
+}
+            </div>
+            <div class="slide-number">10 / 15</div>
+        </div>
+
+        <!-- Slide 11: Detection Methods -->
+        <div class="slide">
+            <h2>Session Hijacking Detection Methods</h2>
+            
+            <h3>1. Network Traffic Analysis</h3>
+            <div class="cli-command">
+# Monitor for suspicious TCP patterns
+sudo tcpdump -i eth0 'tcp[tcpflags] & tcp-push !=0' -n
+
+# Detect unusual session patterns
+sudo netstat -an | grep :80 | awk '{print $5}' | sort | uniq -c
+            </div>
+
+            <h3>2. Behavioral Analysis</h3>
+            <div class="code-block">
+<span class="comment">// Golang: Behavioral anomaly detection</span>
+<span class="keyword">package</span> main
+
+<span class="keyword">import</span> (
+    <span class="string">"fmt"</span>
+    <span class="string">"time"</span>
+)
+
+<span class="keyword">type</span> BehavioralAnalyzer <span class="keyword">struct</span> {
+    sessionPatterns <span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">[]</span>time.Time
+    threshold time.Duration
+}
+
+<span class="keyword">func</span> (ba *BehavioralAnalyzer) <span class="function">RecordActivity</span>(sessionID <span class="keyword">string</span>) {
+    <span class="keyword">now</span> := time.Now()
+    ba.sessionPatterns[sessionID] = <span class="function">append</span>(ba.sessionPatterns[sessionID], now)
+}
+
+<span class="keyword">func</span> (ba *BehavioralAnalyzer) <span class="function">DetectAnomaly</span>(sessionID <span class="keyword">string</span>) <span class="keyword">bool</span> {
+    <span class="keyword">activities</span>, <span class="keyword">exists</span> := ba.sessionPatterns[sessionID]
+    <span class="keyword">if</span> !exists || <span class="function">len</span>(activities) < <span class="string">2</span> {
+        <span class="keyword">return</span> <span class="keyword">false</span>
+    }
+    
+    <span class="keyword">last</span> := activities[<span class="function">len</span>(activities)-<span class="string">1</span>]
+    <span class="keyword">secondLast</span> := activities[<span class="function">len</span>(activities)-<span class="string">2</span>]
+    
+    <span class="comment">// Detect rapid-fire requests (possible automated attack)</span>
+    <span class="keyword">if</span> last.Sub(secondLast) < ba.threshold {
+        <span class="keyword">return</span> <span class="keyword">true</span>
+    }
+    
+    <span class="keyword">return</span> <span class="keyword">false</span>
+}
+            </div>
+
+            <h3>3. IDS/WAF Integration</h3>
+            <div class="info">
+                <p>Implement rules in Snort, Suricata, or ModSecurity to detect session hijacking patterns.</p>
+            </div>
+            <div class="slide-number">11 / 15</div>
+        </div>
+
+        <!-- Slide 12: Prevention Tools -->
+        <div class="slide">
+            <h2>Session Hijacking Prevention Tools</h2>
+            
+            <div class="grid-2">
+                <div class="card defense-type">
+                    <h4>🛡️ Transport Security</h4>
+                    <ul>
+                        <li>HTTPS enforcement</li>
+                        <li>HSTS headers</li>
+                        <li>Certificate pinning</li>
+                        <li>Perfect Forward Secrecy</li>
+                    </ul>
+                </div>
+                
+                <div class="card defense-type">
+                    <h4>🛡️ Session Management</h4>
+                    <ul>
+                        <li>Secure cookie flags</li>
+                        <li>Session regeneration</li>
+                        <li>Token expiration</li>
+                        <li>CSRF protection</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="code-block">
+<span class="comment">// Golang: Complete session security implementation</span>
+<span class="keyword">package</span> main
+
+<span class="keyword">import</span> (
+    <span class="string">"crypto/sha256"</span>
+    <span class="string">"encoding/hex"</span>
+    <span class="string">"net/http"</span>
+    <span class="string">"time"</span>
+)
+
+<span class="keyword">func</span> <span class="function">SetSecureSessionCookie</span>(w http.ResponseWriter, name, value <span class="keyword">string</span>) {
+    <span class="keyword">cookie</span> := &http.Cookie{
+        Name:     name,
+        Value:    value,
+        Path:     <span class="string">"/"</span>,
+        HttpOnly: <span class="keyword">true</span>,
+        Secure:   <span class="keyword">true</span>,
+        SameSite: http.SameSiteStrictMode,
+        Expires:  time.Now().<span class="function">Add</span>(<span class="string">30</span> * time.Minute),
+    }
+    
+    <span class="comment">// Add fingerprinting</span>
+    <span class="keyword">fingerprint</span> := sha256.<span class="function">Sum256</span>([]byte(value + <span class="string">"secret_salt"</span>))
+    cookie.Value = value + <span class="string">"."</span> + hex.<span class="function">EncodeToString</span>(fingerprint[:<span class="string">8</span>])
+    
+    http.<span class="function">SetCookie</span>(w, cookie)
+}
+
+<span class="keyword">func</span> <span class="function">ValidateSessionCookie</span>(r *http.Request, expectedName <span class="keyword">string</span>) (bool, error) {
+    <span class="keyword">cookie</span>, <span class="keyword">err</span> := r.Cookie(expectedName)
+    <span class="keyword">if</span> <span class="keyword">err</span> != <span class="keyword">nil</span> {
+        <span class="keyword">return</span> <span class="keyword">false</span>, err
+    }
+    
+    <span class="comment">// Validate fingerprint</span>
+    <span class="keyword">parts</span> := <span class="function">strings.Split</span>(cookie.Value, <span class="string">"."</span>)
+    <span class="keyword">if</span> <span class="function">len</span>(parts) != <span class="string">2</span> {
+        <span class="keyword">return</span> <span class="keyword">false</span>, fmt.<span class="function">Errorf</span>(<span class="string">"invalid cookie format"</span>)
+    }
+    
+    <span class="keyword">token</span>, <span class="keyword">fingerprint</span> := parts[<span class="string">0</span>], parts[<span class="string">1</span>]
+    <span class="keyword">expectedFP</span> := sha256.<span class="function">Sum256</span>([]byte(token + <span class="string">"secret_salt"</span>))
+    
+    <span class="keyword">valid</span> := <span class="function">strings.HasPrefix</span>(hex.<span class="function">EncodeToString</span>(expectedFP[:<span class="string">8</span>]), fingerprint)
+    <span class="keyword">return</span> <span class="keyword">valid</span>, <span class="keyword">nil</span>
+}
+            </div>
+            <div class="slide-number">12 / 15</div>
+        </div>
+
+        <!-- Slide 13: Practical Demo Setup -->
+        <div class="slide">
+            <h2>Hands-on Practice Setup</h2>
+            
+            <h3>🔧 Required Tools Installation</h3>
+            <div class="cli-command">
+# Install Go tools
+curl -LO https://go.dev/dl/go1.21.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.21.linux-amd64.tar.gz
+
+# Install network analysis tools
+sudo apt update
+sudo apt install -y tcpdump wireshark nmap ettercap-text-only
+
+# Install web security testing tools
+sudo apt install -y burp-suite-community owasp-zap
+
+# Install Go security packages
+go get github.com/google/gopacket
+go get github.com/gorilla/mux
+            </div>
+
+            <h3>📁 Project Structure</h3>
+            <div class="code-block">
+session-security/
+├── cmd/
+│   ├── client/          # Vulnerable client application
+│   ├── server/          # Target server
+│   └── monitor/         # Security monitoring tool
+├── pkg/
+│   ├── hijack/          # Session hijacking implementations
+│   ├── detect/          # Detection algorithms
+│   └── prevent/         # Prevention mechanisms
+├── configs/
+│   ├── nginx.conf       # Web server configuration
+│   └── iptables.rules   # Firewall rules
+└── scripts/
+    ├── setup.sh         # Environment setup
+    ├── simulate.sh      # Attack simulation
+    └── detect.sh        # Detection testing
+            </div>
+
+            <div class="success">
+                <h4>🎯 Practice Scenarios:</h4>
+                <ul>
+                    <li>Implement session hijacking detection</li>
+                    <li>Build secure session management</li>
+                    <li>Create monitoring dashboards</li>
+                    <li>Test detection algorithms</li>
+                </ul>
+            </div>
+            <div class="slide-number">13 / 15</div>
+        </div>
+
+        <!-- Slide 14: Lab Exercise -->
+        <div class="slide">
+            <h2>Lab Exercise: Complete Implementation</h2>
+            
+            <h3>🎯 Exercise: Build Session Security System</h3>
+            
+            <div class="warning">
+                <h4>⚠️ Security Warning:</h4>
+                <p>These exercises should only be performed in controlled lab environments on systems you own or have explicit permission to test.</p>
+            </div>
+
+            <div class="code-block">
+<span class="comment">// Complete session security system example</span>
+<span class="keyword">package</span> main
+
+<span class="keyword">import</span> (
+    <span class="string">"crypto/rand"</span>
+    <span class="string">"encoding/hex"</span>
+    <span class="string">"fmt"</span>
+    <span class="string">"net/http"</span>
+    <span class="string">"sync"</span>
+    <span class="string">"time"</span>
+)
+
+<span class="keyword">type</span> SecureSessionManager <span class="keyword">struct</span> {
+    sessions <span class="keyword">sync</span>.Map
+    <span class="keyword">func</span> (sm *SecureSessionManager) <span class="function">CreateSession</span>(w http.ResponseWriter, userID <span class="keyword">string</span>) (string, error) {
+        <span class="keyword">sessionID</span>, <span class="keyword">err</span> := <span class="function">generateSecureToken</span>()
+        <span class="keyword">if</span> <span class="keyword">err</span> != <span class="keyword">nil</span> {
+            <span class="keyword">return</span> <span class="string">""</span>, err
+        }
+        
+        <span class="keyword">session</span> := Session{
+            ID:        sessionID,
+            UserID:    userID,
+            Created:   time.Now(),
+            LastUsed:  time.Now(),
+            IPAddress: <span class="string">"unknown"</span>, <span class="comment">// Set actual IP</span>
+            UserAgent: <span class="string">""</span>,            <span class="comment">// Set actual UA</span>
+        }
+        
+        sm.sessions.<span class="function">Store</span>(sessionID, session)
+        <span class="function">setSecureCookie</span>(w, <span class="string">"session_id"</span>, sessionID)
+        
+        <span class="keyword">return</span> sessionID, <span class="keyword">nil</span>
+    }
+    
+    <span class="keyword">func</span> (sm *SecureSessionManager) <span class="function">ValidateSession</span>(r *http.Request) (bool, *Session) {
+        <span class="keyword">cookie</span>, <span class="keyword">err</span> := r.Cookie(<span class="string">"session_id"</span>)
+        <span class="keyword">if</span> <span class="keyword">err</span> != <span class="keyword">nil</span> {
+            <span class="keyword">return</span> <span class="keyword">false</span>, <span class="keyword">nil</span>
+        }
+        
+        <span class="keyword">value</span>, <span class="keyword">exists</span> := sm.sessions.<span class="function">Load</span>(cookie.Value)
+        <span class="keyword">if</span> !exists {
+            <span class="keyword">return</span> <span class="keyword">false</span>, <span class="keyword">nil</span>
+        }
+        
+        <span class="keyword">session</span> := value.(Session)
+        <span class="keyword">if</span> <span class="function">isSessionValid</span>(session, r) {
+            <span class="keyword">return</span> <span class="keyword">true</span>, &session
+        }
+        
+        <span class="keyword">return</span> <span class="keyword">false</span>, <span class="keyword">nil</span>
+    }
+}
+            </div>
+
+            <div class="info">
+                <h4>📝 Tasks:</h4>
+                <ol>
+                    <li>Implement session creation with security tokens</li>
+                    <li>Add IP/UserAgent validation</li>
+                    <li>Create session timeout mechanisms</li>
+                    <li>Build monitoring and alerting</li>
+                    <li>Test against simulated attacks</li>
+                </ol>
+            </div>
+            <div class="slide-number">14 / 15</div>
+        </div>
+
+        <!-- Slide 15: Summary -->
+        <div class="slide">
+            <h2>Summary & Key Takeaways</h2>
+            
+            <div class="grid-2">
+                <div class="success">
+                    <h4>🛡️ Defense Strategies</h4>
+                    <ul>
+                        <li>Always use HTTPS/TLS</li>
+                        <li>Implement secure session management</li>
+                        <li>Use secure cookie flags</li>
+                        <li>Regular security audits</li>
+                        <li>Monitor for anomalies</li>
+                        <li>Keep software updated</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h4>🔍 Detection Methods</h4>
+                    <ul>
+                        <li>Network traffic analysis</li>
+                        <li>Behavioral monitoring</li>
+                        <li>Session pattern analysis</li>
+                        <li>Certificate validation</li>
+                        <li>IDS/WAF integration</li>
+                        <li>Real-time alerting</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="info">
+                <h4>🎓 Best Practices Learned:</h4>
+                <ol>
+                    <li><strong>Session Token Security:</strong> Cryptographically secure, unpredictable tokens</li>
+                    <li><strong>Transport Layer Protection:</strong> HTTPS everywhere with HSTS</li>
+                    <li><strong>Session Lifecycle:</strong> Proper creation, validation, and destruction</li>
+                    <li><strong>Monitoring:</strong> Continuous tracking and anomaly detection</li>
+                    <li><strong>Defense in Depth:</strong> Multiple layers of security controls</li>
+                </ol>
+            </div>
+
+            <div class="warning">
+                <h4>⚠️ Remember:</h4>
+                <p>Security is an ongoing process. Regularly update your knowledge, test your defenses, and stay informed about emerging threats and attack techniques.</p>
+            </div>
+
+            <div class="author">
+                <p><strong>Questions & Discussion</strong></p>
+                <p>Thank you for attending this session!</p>
+            </div>
+            <div class="slide-number">15 / 15</div>
+        </div>
+    </div>
+
+    <div class="navigation">
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">← Previous</button>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">Next →</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            
+            // Update button states
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+        }
+
+        function changeSlide(direction) {
+            showSlide(currentSlide + direction);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft' && currentSlide > 0) {
+                changeSlide(-1);
+            } else if (e.key === 'ArrowRight' && currentSlide < totalSlides - 1) {
+                changeSlide(1);
+            }
+        });
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>

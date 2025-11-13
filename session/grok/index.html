@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Session Hijacking Attacks & Countermeasures</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/black.min.css">
+  <style>
+    .reveal pre { font-size: 0.7em; }
+    .demo { background: #1e1e1e; color: #d4d4d4; padding: 10px; border-radius: 8px; }
+    .cmd { background: #0d1117; color: #c9d1d9; }
+  </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- SLIDE 1: TITLE -->
+<section>
+  <h2>42. Understanding Session Hijacking Attacks<br>and Countermeasures</h2>
+  <p><small>Praktik Langsung dengan Golang & CLI</small></p>
+</section>
+
+<!-- SLIDE 2: OBJECTIVE -->
+<section>
+  <h3>Objective</h3>
+  <ul>
+    <li>Memahami jenis-jenis session hijacking</li>
+    <li>Mendeteksi dan mencegah serangan</li>
+    <li>Praktik langsung: simulasi serangan & mitigasi</li>
+  </ul>
+</section>
+
+<!-- SLIDE 3: MODULE OUTLINE -->
+<section>
+  <h3>Module Outline</h3>
+  <ul>
+    <li>Session Hijacking Overview</li>
+    <li>Types of Attacks</li>
+    <li>Spoofing, MITB, Replay, Fixation, Network-Level</li>
+    <li>Tools: Wireshark, Burp, Go Server</li>
+    <li>Detection & Prevention</li>
+  </ul>
+</section>
+
+<!-- SLIDE 4: WHAT IS SESSION HIJACKING? -->
+<section>
+  <section>
+    <h3>Session Hijacking</h3>
+    <p>Pencurian atau penyalahgunaan <strong>session ID</strong> untuk mengakses akun pengguna tanpa kredensial.</p>
+  </section>
+  <section>
+    <h4>How It Works</h4>
+    <pre><code class="hljs">
+User → Login → Server: session=abc123
+Attacker → Sniff/Capture → Use abc123 → Access as User
+    </code></pre>
+  </section>
+</section>
+
+<!-- SLIDE 5: REAL-WORLD IMPACT -->
+<section>
+  <h3>Real-World Consequences</h3>
+  <ul>
+    <li>2011: Firesheep → 1M+ Facebook sessions hijacked</li>
+    <li>Banking fraud via MITB (Zeus, SpyEye)</li>
+    <li>E-commerce cart takeover</li>
+  </ul>
+</section>
+
+<!-- ==================== TYPES OF ATTACKS ==================== -->
+<section>
+  <section>
+    <h3>Types of Session Hijacking</h3>
+  </section>
+
+  <!-- SPOOFING -->
+  <section>
+    <h3>Spoofing</h3>
+    <p>Attacker memalsukan identitas (IP, cookie, token)</p>
+    <div class="demo">
+      <h4>Demo: Cookie Spoofing (Go Server)</h4>
+      <pre class="cmd"><code>
+// server.go
+session, _ := c.Cookie("session")
+if session == "hacked123" {
+    http.Error(w, "You are hacked!", 200)
+}
+      </code></pre>
+      <p><strong>CLI:</strong></p>
+      <pre class="cmd"><code>
+curl -b "session=hacked123" http://localhost:8080/admin
+→ You are hacked!
+      </code></pre>
+    </div>
+  </section>
+
+  <!-- APPLICATION-LEVEL -->
+  <section>
+    <h3>Application-Level Hijacking</h3>
+    <p>Eksploitasi logika aplikasi (predictable session ID)</p>
+    <div class="demo">
+      <h4>Demo: Predictable Session ID (Go)</h4>
+      <pre class="cmd"><code>
+// Vulnerable
+sessionID := fmt.Sprintf("user%d", time.Now().Unix())
+      </code></pre>
+      <p><strong>Attack:</strong></p>
+      <pre class="cmd"><code>
+# Guess next ID
+curl -b "session=user1731478800" http://localhost:8080
+      </code></pre>
+    </div>
+  </section>
+
+  <!-- MAN-IN-THE-BROWSER (MITB) -->
+  <section>
+    <h3>Man-in-the-Browser (MITB)</h3>
+    <p>Malware di browser → ubah transaksi</p>
+    <div class="demo">
+      <h4>Demo: Simulate MITB with Proxy (Burp)</h4>
+      <ol>
+        <li>Set proxy 127.0.0.1:8080</li>
+        <li>Intercept → Modify amount: 100 → 10000</li>
+      </ol>
+      <p><strong>Prevention:</strong> Transaction Signing + HSTS</p>
+    </div>
+  </section>
+
+  <!-- SESSION REPLAY -->
+  <section>
+    <h3>Session Replay Attack</h3>
+    <p>Capture & ulang paket sah</p>
+    <div class="demo">
+      <h4>Demo: Replay with curl</h4>
+      <pre class="cmd"><code>
+# Capture cookie
+Cookie: session=xyz789
+
+# Replay
+curl -b "session=xyz789" http://localhost:8080/transfer
+      </code></pre>
+      <p><strong>Countermeasure: One-Time Token</strong></p>
+      <pre class="cmd"><code>
+// Add nonce
+nonce := rand.String(16)
+redis.Set("nonce:"+nonce, "used", 5s)
+      </code></pre>
+    </div>
+  </section>
+
+  <!-- SESSION FIXATION -->
+  <section>
+    <h3>Session Fixation Attack</h3>
+    <p>Attacker set session ID sebelum login</p>
+    <div class="demo">
+      <h4>Demo: Fixation via URL</h4>
+      <pre class="cmd"><code>
+# Attacker sends:
+http://app.com/login?session_id=attacker123
+
+# User logs in → server uses attacker123
+# Attacker uses same ID
+curl -b "session=attacker123" http://localhost:8080/dashboard
+      </code></pre>
+      <p><strong>Fix: Regenerate Session on Login</strong></p>
+      <pre class="cmd"><code>
+// Secure
+http.SetCookie(w, &http.Cookie{Name: "session", Value: newID, HttpOnly: true})
+      </code></pre>
+    </div>
+  </section>
+
+  <!-- NETWORK-LEVEL (TCP HIJACKING) -->
+  <section>
+    <h3>Network-Level: TCP Hijacking</h3>
+    <p>Predict SEQ/ACK → inject packet</p>
+    <div class="demo">
+      <h4>Demo: ARP Spoof + Packet Injection</h4>
+      <pre class="cmd"><code>
+# Kali Linux
+arpspoof -i eth0 -t 192.168.1.10 192.168.1.1
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+# Use scapy (Python) to inject
+send(IP(src=A,dst=B)/TCP(...))
+      </code></pre>
+      <p><strong>Prevention: TLS + Sequence Randomization</strong></p>
+    </div>
+  </section>
+
+</section>
+
+<!-- TOOLS -->
+<section>
+  <section>
+    <h3>Session Hijacking Tools</h3>
+    <table>
+      <tr><td>Wireshark</td><td>Capture session cookies</td></tr>
+      <tr><td>Firesheep</td><td>WiFi session sniffing</td></tr>
+      <tr><td>Burp Suite</td><td>Intercept & replay</td></tr>
+      <tr><td>Ettercap</td><td>ARP poisoning</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h3>Demo: Wireshark Filter</h3>
+    <pre class="cmd"><code>
+Filter: http.cookie contains "session"
+→ Look for Set-Cookie & Cookie headers
+    </code></pre>
+  </section>
+</section>
+
+<!-- DETECTION -->
+<section>
+  <h3>Detection Methods</h3>
+  <ul>
+    <li>IDS: Snort rule for cookie theft</li>
+    <li>WAF: Block predictable session patterns</li>
+    <li>Monitor: Multiple logins from different IPs</li>
+  </ul>
+  <div class="demo">
+    <pre class="cmd"><code>
+# Snort Rule
+alert tcp any any -> any 80 (msg:"Session Theft"; content:"session="; sid:10001;)
+    </code></pre>
+  </div>
+</section>
+
+<!-- PREVENTION -->
+<section>
+  <section>
+    <h3>Prevention Best Practices</h3>
+    <ul>
+      <li>Use HTTPS everywhere</li>
+      <li>HttpOnly + Secure + SameSite cookies</li>
+      <li>Regenerate session ID on login/privilege change</li>
+      <li>Short session timeout</li>
+      <li>Bind session to IP/User-Agent (optional)</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>Secure Go Cookie Example</h3>
+    <pre><code class="go">
+http.SetCookie(w, &http.Cookie{
+    Name:     "session",
+    Value:    secureRandomToken(),
+    Path:     "/",
+    HttpOnly: true,
+    Secure:   true,
+    SameSite: http.SameSiteStrictMode,
+    Expires:  time.Now().Add(1 * time.Hour),
+})
+    </code></pre>
+  </section>
+</section>
+
+<!-- DELIVERY & DURATION -->
+<section>
+  <h3>Delivery Method</h3>
+  <p>Lecture + Live Demo + Group Discussion</p>
+  <p><strong>Duration: 1 Day (8 Hours)</strong></p>
+</section>
+
+<!-- THANK YOU -->
+<section>
+  <h2>Thank You!</h2>
+  <p>Praktik: Clone repo & coba semua demo!</p>
+  <pre><code>
+git clone https://github.com/yourname/session-hijacking-demo
+cd session-hijacking-demo
+go run server.go
+open index.html
+  </code></pre>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide'
+  });
+</script>
+</body>
+</html>

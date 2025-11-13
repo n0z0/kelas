@@ -7,7 +7,8 @@ node_modules
 # Generated files
 .psci
 output
-
+*.key
+*.crt
 # LaTeX auxiliary files
 *.aux
 *.log

